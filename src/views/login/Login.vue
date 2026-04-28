@@ -23,14 +23,24 @@ const loginForm = ref({ account: '', password: '' })
 
 const handleLogin = () => {
   if (!loginForm.value.account) return ElMessage.warning('请输入账号')
-  // 模拟登录成功
+  
   localStorage.setItem('isLoggedIn', 'true')
-  // 模拟给特定账号赋管理员权限 (实际由后端返回)
+  
+  // 超级管理员特权通道
+  if (loginForm.value.account === 'root' || loginForm.value.account === 'superadmin') {
+    localStorage.setItem('userRole', 'superadmin')
+    ElMessage.success('超级管理员登录成功！')
+    router.push('/sys/super-add') // 直接跳入超级管理员专属页面，不选角色
+    return
+  }
+
+  // 普通账号：模拟管理员标识，跳入角色选择页
   if (loginForm.value.account === 'admin') localStorage.setItem('isAdmin', 'true')
   
   ElMessage.success('登录成功！')
-  router.push('/role-select') // 跳转角色选择页
+  router.push('/role-select') 
 }
+
 </script>
 <style scoped>
 .login-container { height: 100vh; display: flex; justify-content: center; align-items: center; background: linear-gradient(45deg, #ffc5af 0%, #f5aeb4 100%); }

@@ -36,9 +36,8 @@ const routes = [
         meta: { title: '公告管理', icon: 'Notification', roles: ['admin'] } // 统一为公告管理
       },
 
-      { path: 'vol-feedback', component: () => import('../views/vol/VolFeedback.vue'), meta: { title: '问题反馈', icon: 'ChatDotSquare', roles: ['volunteer'] } },
-      { path: 'org-feedback', component: () => import('../views/vol/VolFeedback.vue'), meta: { title: '问题反馈', icon: 'ChatDotSquare', roles: ['organizer'] } },
-      { path: 'admin-feedback', component: () => import('../views/admin/AdminFeedback.vue'), meta: { title: '接收反馈', icon: 'ChatLineSquare', roles: ['admin'] } }
+      { path: 'super-add', component: () => import('../views/super/SuperAdd.vue'), meta: { title: '添加管理员', icon: 'User', roles: ['superadmin'] } },
+      { path: 'super-delete', component: () => import('../views/super/SuperDelete.vue'), meta: { title: '移除管理员', icon: 'Delete', roles: ['superadmin'] } }
     ]
   }
 ]

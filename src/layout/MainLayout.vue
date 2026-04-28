@@ -21,7 +21,7 @@
         </div>
         <div class="header-right">
           <div class="user-id-tag">
-            <span>{{ currentRole === 'admin' ? '管理员编号：ADM-00001' : currentRole === 'organizer' ? '组织者编号：ORG-13421' : '志愿者编号：VOL-13421' }}</span>
+            <span>{{ currentRole === 'superadmin' ? '超级管理员' : currentRole === 'admin' ? '管理员编号：ADM-00001' : currentRole === 'organizer' ? '组织者编号：ORG-13421' : '志愿者编号：VOL-13421' }}</span>
           </div>
 
           <el-button v-if="currentRole === 'volunteer' && !hasOrgAuth" type="primary" plain size="small" @click="$router.push('/sys/vol-apply-org')" style="margin-right: 15px;">申请成为组织者</el-button>
@@ -31,7 +31,7 @@
           <el-dropdown trigger="click">
             <span class="user-info">
               <el-avatar :size="32" src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png" />
-              <span class="username">{{ currentRole === 'admin' ? '管理员' : '张三' }}</span>
+              <span class="username">{{ currentRole === 'superadmin' ? '超级管理员' : (currentRole === 'admin' ? '管理员' : '张三') }}</span>
             </span>
             <template #dropdown>
               <el-dropdown-menu><el-dropdown-item @click="logout">退出登录</el-dropdown-item></el-dropdown-menu>
