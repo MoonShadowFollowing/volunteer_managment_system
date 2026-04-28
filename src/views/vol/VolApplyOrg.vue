@@ -11,9 +11,6 @@
           <el-form-item label="申请人姓名">
             <el-input value="张三" disabled />
           </el-form-item>
-          <el-form-item label="所属组织">
-            <el-input placeholder="请输入您代表的组织名称" />
-          </el-form-item>
           <el-form-item label="申请理由">
             <el-input type="textarea" rows="4" placeholder="请简述申请成为组织者的理由..." />
           </el-form-item>

@@ -8,9 +8,6 @@
         <el-form-item label="申请人">
           <el-input v-model="queryName" placeholder="姓名查询" clearable />
         </el-form-item>
-        <el-form-item label="组织名称">
-          <el-input v-model="queryOrg" placeholder="组织查询" clearable />
-        </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
@@ -27,7 +24,6 @@
         </el-table-column>
         <el-table-column prop="id" label="申请人编号" width="120" align="center" />
         <el-table-column prop="name" label="申请人姓名" />
-        <el-table-column prop="orgName" label="申请组织名称" />
         <el-table-column prop="time" label="申请时间" width="180" align="center" />
         <el-table-column label="操作" width="250" align="center">
           <template #default="scope">
@@ -55,7 +51,6 @@
       <el-descriptions :column="1" border>
         <el-descriptions-item label="申请人编号">{{ currentApply.id }}</el-descriptions-item>
         <el-descriptions-item label="申请人姓名">{{ currentApply.name }}</el-descriptions-item>
-        <el-descriptions-item label="所属组织">{{ currentApply.orgName }}</el-descriptions-item>
         <el-descriptions-item label="申请理由">
           {{ currentApply.orgIntro }}
         </el-descriptions-item>
@@ -71,7 +66,6 @@
       </el-descriptions>
       <template #footer>
         <el-button @click="dialogVisible = false">返回</el-button>
-        <el-button type="success" @click="handleAudit(currentApply, 'pass')">审核通过</el-button>
       </template>
     </el-dialog>
   </div>
@@ -92,7 +86,6 @@ const orgList = ref([
   {
     id: 'VOL-12345',
     name: '张老三',
-    orgName: '青协宣发部',
     time: '2026-04-01 10:00:00',
     phone: '13800138000',
     orgIntro: '需要发布学校大型活动的宣传与物料设计志愿活动',
@@ -101,7 +94,6 @@ const orgList = ref([
   {
     id: 'VOL-12231',
     name: '李小明',
-    orgName: '校园志愿服务中心',
     time: '2026-04-02 09:20:00',
     phone: '13912345678',
     orgIntro: '需要统筹全校志愿时数录入与志愿者注册',

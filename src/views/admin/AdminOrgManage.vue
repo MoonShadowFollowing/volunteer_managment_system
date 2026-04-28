@@ -13,10 +13,6 @@
           <el-input v-model="queryName" placeholder="模糊查询姓名" clearable />
         </el-form-item>
 
-        <el-form-item label="所属组织">
-          <el-input v-model="queryOrg" placeholder="模糊查询组织" clearable />
-        </el-form-item>
-
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
@@ -39,7 +35,6 @@
         <el-table-column prop="orgNo" label="组织者编号" width="140" align="center" />
 
         <el-table-column prop="name" label="组织者姓名" />
-        <el-table-column prop="org" label="所属组织" />
 
         <el-table-column prop="actCount" label="已发活动数" align="center" />
 
@@ -89,13 +84,11 @@ const list = ref([
   {
     orgNo: 'ORG-12345', 
     name: '李四',
-    org: '青协',
     actCount: 5
   },
   {
     orgNo: 'ORG-54321', 
     name: '王小明',
-    org: '校园志愿服务中心',
     actCount: 2
   }
 ])

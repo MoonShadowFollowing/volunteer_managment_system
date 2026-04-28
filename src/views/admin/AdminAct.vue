@@ -22,15 +22,6 @@
           />
         </el-form-item>
 
-        <el-form-item label="发布组织">
-          <el-input
-            v-model="queryForm.actName"
-            placeholder="模糊查询发布组织"
-            style="width: 150px"
-            clearable
-          />
-        </el-form-item>
-
         <el-form-item label="活动时间">
           <el-date-picker
             v-model="queryForm.timeRange"
@@ -68,7 +59,6 @@
 
         <el-table-column prop="actNo" label="活动编号" width="140" align="center" />
         <el-table-column prop="actName" label="活动名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="org" label="发布组织" width="160" />
 
         <!-- 时间双列结构（规范保留） -->
         <el-table-column label="活动开始时间" width="180" align="center">
@@ -161,7 +151,6 @@
 
         <el-descriptions-item label="活动编号">{{ currentAct.actNo }}</el-descriptions-item>
         <el-descriptions-item label="活动名称">{{ currentAct.actName }}</el-descriptions-item>
-        <el-descriptions-item label="发布组织">{{ currentAct.org }}</el-descriptions-item>
 
         <el-descriptions-item label="开始时间">{{ currentAct.startTime }}</el-descriptions-item>
         <el-descriptions-item label="结束时间">{{ currentAct.endTime }}</el-descriptions-item>
@@ -199,7 +188,6 @@ const actList = ref([
   {
     actNo: '202605200001',
     actName: '南门指引服务',
-    org: '青年志愿者协会',
     startTime: '2026-05-20 08:00:00',
     endTime: '2026-05-20 12:00:00',
     location: '学校南门',
@@ -210,7 +198,6 @@ const actList = ref([
   {
     actNo: '202605200002',
     actName: '校园清扫行动',
-    org: '环境保护协会',
     startTime: '2026-05-21 09:00:00',
     endTime: '2026-05-21 11:30:00',
     location: '全校范围',
