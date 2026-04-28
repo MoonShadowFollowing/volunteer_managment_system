@@ -193,6 +193,9 @@
                 </template>
               </el-table-column>
 
+              <el-table-column prop="startTime" label="签到时间" width="180" align="center"/>
+              <el-table-column prop="endTime" label="签退时间" width="180" align="center"/>
+
               <el-table-column label="志愿时长" align="center">
                 <template #default="scope">
                   <span v-if="scope.row.signStatus==='正常'">
@@ -328,9 +331,9 @@ const pagedVolunteers = computed(()=>{
 const handleAudit = (row, res) => { row.status = res; ElMessage.success(`已${res}！`) }
 
 const signRecords = ref([
-  { id: 1, volId: 'VOL-22345', name: '李四', signStatus: '正常', hours: 4, minutes: 0 },
-  { id: 2, volId: 'VOL-00345', name: '赵六', signStatus: '漏签退', hours: 0, minutes: 0 },
-  { id: 3, volId: 'VOL-21345', name: '孙七', signStatus: '正常', hours: 2, minutes: 30 }
+  { id: 1, volId: 'VOL-22345', name: '李四', signStatus: '正常', startTime: '2026-05-01 08:00:00', endTime: '2026-05-01 12:00:00', hours: 4, minutes: 0 },
+  { id: 2, volId: 'VOL-00345', name: '赵六', signStatus: '漏签退', startTime: '2026-05-01 08:00:00', endTime: '-', hours: 0, minutes: 0 },
+  { id: 3, volId: 'VOL-21345', name: '孙七', signStatus: '正常', startTime: '2026-05-01 08:00:00', endTime: '2026-05-01 10:30:00', hours: 2, minutes: 30 }
 ])
 
 const pagedSignRecords = computed(()=>{

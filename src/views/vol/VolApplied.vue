@@ -93,12 +93,13 @@
           <el-descriptions-item label="活动名称">{{ currentAct.name }}</el-descriptions-item>
           <el-descriptions-item label="活动地点">{{ currentAct.location }}</el-descriptions-item>
 
+          <el-descriptions-item label="报名情况">
+            <strong style="color: #e63946;">{{ currentAct.enrolledNum }} / {{ currentAct.limitNum }}</strong></el-descriptions-item>
+
           <el-descriptions-item label="开始时间">{{ currentAct.startTime }}</el-descriptions-item>
           <el-descriptions-item label="结束时间">{{ currentAct.endTime }}</el-descriptions-item>
-
-          <el-descriptions-item label="报名情况">
-            <strong style="color: #e63946;">{{ currentAct.enrolledNum }} / {{ currentAct.limitNum }}</strong> 人
-          </el-descriptions-item>
+          <el-descriptions-item label="签到时间">{{ currentAct.checkInTime }}</el-descriptions-item>
+          <el-descriptions-item label="签退时间">{{ currentAct.checkOutTime }}</el-descriptions-item>
 
           <el-descriptions-item label="活动简介" :span="2">
             {{ currentAct.desc }}
@@ -141,6 +142,8 @@ const list = ref([
     location: '中心操场',
     startTime: '2026-05-01 08:00:00',
     endTime: '2026-05-01 12:00:00',
+    checkInTime: '2026-05-01 08:00:00',
+    checkOutTime: '2026-05-01 12:00:00',
     limitNum: 10,
     enrolledNum: 9,
     desc: '校园内部大扫除活动。',
@@ -154,6 +157,8 @@ const list = ref([
     location: '阳光社区',
     startTime: '2026-05-10 14:00:00',
     endTime: '2026-05-10 16:30:00',
+    checkInTime: '-',
+    checkOutTime: '-',
     limitNum: 10,
     enrolledNum: 10,
     desc: '进入社区进行反诈骗宣讲。',
@@ -167,6 +172,8 @@ const list = ref([
     location: '幸福养老院',
     startTime: '2026-05-20 09:00:00',
     endTime: '2026-05-20 11:30:00',
+    checkInTime: '2026-05-20 09:00:00',
+    checkOutTime: '2026-05-20 11:30:00',
     limitNum: 10,
     enrolledNum: 10,
     desc: '陪伴老人聊天互动。',

@@ -4,12 +4,16 @@
     <!-- 查询 -->
     <el-card class="mb-20">
       <el-form :inline="true">
+        <el-form-item label="证书编号">
+          <el-input placeholder="查询证书编号" style="width: 150px" clearable />
+        </el-form-item>
+
         <el-form-item label="活动编号">
-          <el-input placeholder="查询活动编号" clearable />
+          <el-input placeholder="查询活动编号" style="width: 150px" clearable />
         </el-form-item>
 
         <el-form-item label="活动名称">
-          <el-input v-model="queryName" placeholder="模糊查询" clearable />
+          <el-input v-model="queryName" placeholder="查询活动名称" style="width: 150px" clearable />
         </el-form-item>
 
         <el-form-item label="活动日期">
@@ -36,12 +40,13 @@
       <el-table :data="pagedCertList" border>
 
         <!-- 编号 -->
-        <el-table-column label="编号" width="80" align="center">
+        <el-table-column label="编号" width="60" align="center">
           <template #default="scope">
             {{ (page - 1) * pageSize + scope.$index + 1 }}
           </template>
         </el-table-column>
 
+        <el-table-column prop="certId" label="证书编号" min-width="150" align="center" />
         <el-table-column prop="certName" label="证书标题" min-width="180" />
         <el-table-column prop="activityName" label="对应活动" min-width="160" />
         <el-table-column prop="actNo" label="对应活动编号" width="140" align="center" />
@@ -51,7 +56,7 @@
         <el-table-column prop="endTime" label="结束时间" width="180" align="center"/>
 
         <!-- 工时结构化 -->
-        <el-table-column label="认证工时" width="160" align="center">
+        <el-table-column label="认证工时" width="130" align="center">
           <template #default="scope">
             <strong style="color: #e63946">
               {{ scope.row.hours }} 小时 {{ scope.row.minutes }} 分钟
@@ -59,7 +64,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="status" label="证书状态" width="100" align="center">
+        <el-table-column prop="status" label="证书状态" width="90" align="center">
           <template #default="scope">
             <el-tag :type="scope.row.status === '已失效' ? 'danger' : 'success'">
               {{ scope.row.status }}
@@ -67,7 +72,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="180" align="center">
+        <el-table-column label="操作" width="120" align="center">
           <template #default="scope">
             <el-button
               size="small"
@@ -122,6 +127,7 @@ const pageSize = ref(5)
 /* hours + minutes 结构 */
 const certList = ref([
   {
+    certId: 1234567891012345,
     certName: '优秀青年志愿者证明',
     activityName: '校园环境清扫',
     actNo: '202605001001',
@@ -132,6 +138,7 @@ const certList = ref([
     status: '有效'
   },
   {
+    certId: 1234567891012312,
     certName: '马拉松后勤服务证明',
     activityName: '市马拉松后勤',
     actNo: '202606100001',
@@ -142,6 +149,7 @@ const certList = ref([
     status: '已失效'
   },
   {
+    certId: 1237654891012345,
     certName: '防诈骗宣讲先锋',
     activityName: '社区防诈骗宣讲',
     actNo: '202605100002',
