@@ -46,13 +46,13 @@
 
         <el-table-column prop="name" label="活动名称" min-width="180" />
 
-        <el-table-column prop="startTime" label="开始时间" width="180" align="center">
+        <el-table-column prop="startTime" label="开始时间" width="170" align="center">
           <template #default="scope">
             {{ scope.row.startTime }}
           </template>
         </el-table-column>
 
-        <el-table-column prop="endTime" label="结束时间" width="180" align="center">
+        <el-table-column prop="endTime" label="结束时间" width="170" align="center">
           <template #default="scope">
             {{ scope.row.endTime }}
           </template>
@@ -82,7 +82,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="100" align="center">
+        <el-table-column label="操作" width="130" align="center">
           <template #default="scope">
             <el-button
               size="small"
@@ -92,6 +92,15 @@
               @click="openDialog('edit', scope.row)"
             >
               修改
+            </el-button>
+            <el-button
+              size="small"
+              type="danger"
+              link
+              icon="Delete"
+              @click="handleDelete(scope.row)"
+            >
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -166,7 +175,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const dialogVisible = ref(false)
 const dialogType = ref('add')
@@ -327,6 +336,34 @@ const handleSizeChange = (val) => {
 
 const handleCurrentChange = (val) => {
   currentPage.value = val
+}
+
+// --- 删除活动逻辑 ---
+const handleDelete = (row) => {
+  // 危险操作确认弹窗
+  ElMessageBox.confirm(
+    `确定要删除活动【${row.name}】吗？删除后不可恢复。`,
+    '危险操作确认',
+    {
+      type: 'error',
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消'
+    }
+  )
+    .then(() => {
+      // 模拟前端删除：将该行从数据源中过滤掉
+      tableData.value = tableData.value.filter(item => item.actNo !== row.actNo)
+      ElMessage.success(`【${row.name}】删除成功！`)
+      
+      // 如果删除了当前页的最后一条数据，自动退回上一页
+      const totalPages = Math.ceil(filteredTableData.value.length / pageSize.value)
+      if (currentPage.value > totalPages && currentPage.value > 1) {
+        currentPage.value--
+      }
+    })
+    .catch(() => {
+      // 捕获取消操作，防止控制台报错
+    })
 }
 </script>
 
