@@ -44,14 +44,31 @@ const routes = [
 
 const router = createRouter({ history: createWebHistory(process.env.BASE_URL), routes })
 
-// 路由守卫：模拟门户登录拦截
+// 路由守卫：登录 + 角色拦截
 router.beforeEach((to, from, next) => {
-  const isLogin = localStorage.getItem('isLoggedIn') === 'true'
+  const isLogin = localStorage.getItem('isLoggedIn') === 'true' && !!localStorage.getItem('token')
   if (to.path !== '/login' && !isLogin) {
-    next('/login') // 未登录打回登录页
-  } else {
-    next()
+    return next('/login')
   }
+  // 子路由角色校验：拿当前角色和资质，拦直访
+  if (to.meta && to.meta.roles && to.meta.roles.length) {
+    const currentRole = localStorage.getItem('userRole') || 'volunteer'
+    const isOrgQualified = localStorage.getItem('isOrganizerQualified') === 'true'
+    const allowed = to.meta.roles.some(role => {
+      if (role === currentRole) return true
+      // 双身份：志愿者具备组织者资质时，访问组织者菜单也允许
+      if (role === 'organizer' && currentRole === 'volunteer' && isOrgQualified) return true
+      return false
+    })
+    if (!allowed) {
+      const home =
+        currentRole === 'superadmin' ? '/sys/super-add' :
+        currentRole === 'admin' ? '/sys/dashboard-admin' :
+        currentRole === 'organizer' ? '/sys/dashboard-org' : '/sys/dashboard-volun'
+      return next(home)
+    }
+  }
+  next()
 })
 
 export default router

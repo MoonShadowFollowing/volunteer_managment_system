@@ -31,7 +31,7 @@
           <el-dropdown trigger="click">
             <span class="user-info">
               <el-avatar :size="32" src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png" />
-              <span class="username">{{ currentRole === 'superadmin' ? '超级管理员' : (currentRole === 'admin' ? '管理员' : '张三') }}</span>
+              <span class="username">{{ userName || (currentRole === 'superadmin' ? '超级管理员' : (currentRole === 'admin' ? '管理员' : '志愿者')) }}</span>
             </span>
             <template #dropdown>
               <el-dropdown-menu><el-dropdown-item @click="logout">退出登录</el-dropdown-item></el-dropdown-menu>
@@ -45,9 +45,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Trophy, Fold, Expand, Ticket } from '@element-plus/icons-vue' // 确保导入图标
+import { fetchMe, logout as logoutApi } from '../api/auth'
 
 const isCollapse = ref(false)
 const router = useRouter()
@@ -55,6 +56,7 @@ const route = useRoute()
 
 const currentRole = ref(localStorage.getItem('userRole') || 'volunteer')
 const hasOrgAuth = ref(localStorage.getItem('isOrganizerQualified') === 'true')
+const userName = ref(localStorage.getItem('userName') || '')
 
 const menus = computed(() => {
   const sysRoutes = router.options.routes.find(r => r.path === '/sys').children
@@ -67,11 +69,41 @@ const switchRole = (targetRole) => {
   localStorage.setItem('userRole', targetRole)
   router.push(targetRole === 'organizer' ? '/sys/dashboard-org' : '/sys/dashboard-volun')
 }
-const logout = () => { localStorage.setItem('isLoggedIn', 'false'); router.push('/login') }
+const logout = async () => {
+  try { await logoutApi() } catch (e) { /* 后端 stub，失败也无所谓 */ }
+  localStorage.removeItem('token')
+  localStorage.removeItem('isLoggedIn')
+  localStorage.removeItem('userRole')
+  localStorage.removeItem('isOrganizerQualified')
+  localStorage.removeItem('isAdmin')
+  localStorage.removeItem('userName')
+  localStorage.removeItem('userId')
+  router.push('/login')
+}
+
+// 刷新场景：token 存在但本地缓存丢了 → 调 /auth/me 回填
+onMounted(async () => {
+  if (localStorage.getItem('token') && !localStorage.getItem('userName')) {
+    try {
+      const me = await fetchMe()
+      localStorage.setItem('userRole', me.role)
+      localStorage.setItem('isOrganizerQualified', String(me.isOrganizerQualified))
+      localStorage.setItem('isAdmin', String(me.isAdmin))
+      localStorage.setItem('userName', me.name)
+      localStorage.setItem('userId', String(me.userId))
+      currentRole.value = me.role
+      hasOrgAuth.value = me.isOrganizerQualified
+      userName.value = me.name
+    } catch (e) {
+      // 401 由拦截器统一处理
+    }
+  }
+})
 
 watch(() => route.path, () => {
   hasOrgAuth.value = localStorage.getItem('isOrganizerQualified') === 'true'
   currentRole.value = localStorage.getItem('userRole') || 'volunteer'
+  userName.value = localStorage.getItem('userName') || userName.value
 })
 </script>
 

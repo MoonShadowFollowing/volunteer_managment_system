@@ -7,7 +7,7 @@
       <el-form :model="loginForm" size="large">
         <el-form-item><el-input v-model="loginForm.account" placeholder="学号/工号" prefix-icon="User" /></el-form-item>
         <el-form-item><el-input v-model="loginForm.password" type="password" placeholder="密码" prefix-icon="Lock" show-password @keyup.enter="handleLogin"/></el-form-item>
-        <el-button type="primary" class="login-btn" @click="handleLogin">门 户 登 录</el-button>
+        <el-button type="primary" class="login-btn" :loading="submitting" @click="handleLogin">门 户 登 录</el-button>
       </el-form>
     </div>
   </div>
@@ -17,30 +17,44 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { login as loginApi } from '../../api/auth'
 
 const router = useRouter()
 const loginForm = ref({ account: '', password: '' })
+const submitting = ref(false)
 
-const handleLogin = () => {
+const handleLogin = async () => {
   if (!loginForm.value.account) return ElMessage.warning('请输入账号')
-  
-  localStorage.setItem('isLoggedIn', 'true')
-  
-  // 超级管理员特权通道
-  if (loginForm.value.account === 'root' || loginForm.value.account === 'superadmin') {
-    localStorage.setItem('userRole', 'superadmin')
-    ElMessage.success('超级管理员登录成功！')
-    router.push('/sys/super-add') // 直接跳入超级管理员专属页面，不选角色
-    return
+  if (!loginForm.value.password) return ElMessage.warning('请输入密码')
+
+  submitting.value = true
+  try {
+    const data = await loginApi(loginForm.value.account.trim(), loginForm.value.password)
+    // data = { token, user: { userId, username, name, role, isOrganizerQualified, isAdmin } }
+    const { token, user } = data
+    localStorage.setItem('token', token)
+    localStorage.setItem('isLoggedIn', 'true')
+    localStorage.setItem('userRole', user.role)
+    localStorage.setItem('isOrganizerQualified', String(user.isOrganizerQualified))
+    localStorage.setItem('isAdmin', String(user.isAdmin))
+    localStorage.setItem('userName', user.name)
+    localStorage.setItem('userId', String(user.userId))
+
+    ElMessage.success(`欢迎，${user.name}`)
+    if (user.role === 'superadmin') {
+      router.push('/sys/super-add')
+    } else if (user.role === 'admin') {
+      router.push('/sys/dashboard-admin')
+    } else {
+      // 志愿者/组织者 → 走原有角色选择页（让用户在双身份间挑当前进入身份）
+      router.push('/role-select')
+    }
+  } catch (e) {
+    // 拦截器已弹 Message
+  } finally {
+    submitting.value = false
   }
-
-  // 普通账号：模拟管理员标识，跳入角色选择页
-  if (loginForm.value.account === 'admin') localStorage.setItem('isAdmin', 'true')
-  
-  ElMessage.success('登录成功！')
-  router.push('/role-select') 
 }
-
 </script>
 <style scoped>
 .login-container { height: 100vh; display: flex; justify-content: center; align-items: center; background: linear-gradient(45deg, #ffc5af 0%, #f5aeb4 100%); }

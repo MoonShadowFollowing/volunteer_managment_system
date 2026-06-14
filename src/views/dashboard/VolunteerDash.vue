@@ -7,12 +7,6 @@
           <p class="num">36 <span>小时 &nbsp; </span>30 <span>分钟</span></p>
         </el-card>
       </el-col>
-      <!-- <el-col :span="8">
-        <el-card class="stat-card">
-          <h3>我的积分</h3>
-          <p class="num">36 <span>分</span></p>
-        </el-card>
-      </el-col> -->
       <el-col :span="12">
         <el-card class="stat-card">
           <h3>已获证书</h3>
@@ -20,9 +14,6 @@
         </el-card>
       </el-col>
     </el-row>
-    <!-- <el-card header="最新可报名活动">
-      <el-empty description="暂无最新活动" />
-    </el-card> -->
   </div>
 </template>
 <style scoped>
