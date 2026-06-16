@@ -38,6 +38,7 @@ const handleLogin = async () => {
     localStorage.setItem('isOrganizerQualified', String(user.isOrganizerQualified))
     localStorage.setItem('isAdmin', String(user.isAdmin))
     localStorage.setItem('userName', user.name)
+    localStorage.setItem('userUsername', user.username)
     localStorage.setItem('userId', String(user.userId))
 
     ElMessage.success(`欢迎，${user.name}`)

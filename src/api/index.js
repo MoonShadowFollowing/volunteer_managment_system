@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 import router from '../router'
 
 const http = axios.create({
-  baseURL: process.env.VUE_APP_API_BASE || 'http://localhost:8080/api',
+  baseURL: process.env.VUE_APP_API_BASE || 'http://localhost:8081/api',
   timeout: 10000
 })
 

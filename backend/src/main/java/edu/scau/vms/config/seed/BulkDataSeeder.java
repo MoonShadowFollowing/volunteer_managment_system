@@ -82,10 +82,10 @@ public class BulkDataSeeder implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         Integer existing = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM users WHERE username LIKE ?",
-                Integer.class, "bulk%");
+                "SELECT COUNT(*) FROM activities WHERE title LIKE ?",
+                Integer.class, ACT_TITLE_PREFIX + "%");
         if (existing != null && existing > 0) {
-            log.info("[BulkDataSeeder] 检测到 {} 个 bulk 用户已存在，跳过批量种子。", existing);
+            log.info("[BulkDataSeeder] 检测到 {} 个 bulk 活动已存在，跳过批量种子。", existing);
             return;
         }
         log.info("[BulkDataSeeder] 启动批量种子：目标 用户≥{}+{} 活动≥{} 报名≥{}",
@@ -111,7 +111,11 @@ public class BulkDataSeeder implements ApplicationRunner {
     private List<Integer> seedOrganizers() {
         List<Object[]> batch = new ArrayList<>();
         for (int i = 1; i <= organizersTarget; i++) {
-            String username = ORG_PREFIX + String.format("%03d", i);
+            // 学号格式：2024 + 固定专业代码0003 + 班级(2位) + 序号(2位)
+            // 从 202400030101 开始
+            int classNum = ((i - 1) / 50) + 1;
+            int seqNum = ((i - 1) % 50) + 1;
+            String username = String.format("20240003%02d%02d", classNum, seqNum);
             String name = randomName();
             String phone = randomPhone();
             // 组织者：role=volunteer + is_organizer=1（双身份模型）
@@ -122,13 +126,17 @@ public class BulkDataSeeder implements ApplicationRunner {
                 batch);
         return jdbc.queryForList(
                 "SELECT user_id FROM users WHERE username LIKE ? ORDER BY user_id",
-                Integer.class, ORG_PREFIX + "%");
+                Integer.class, "20240003%");
     }
 
     private List<Integer> seedVolunteers() {
         List<Object[]> batch = new ArrayList<>();
         for (int i = 1; i <= volunteersTarget; i++) {
-            String username = VOL_PREFIX + String.format("%03d", i);
+            // 学号格式：2024 + 固定专业代码0004 + 班级(2位) + 序号(2位)
+            // 从 202400040101 开始
+            int classNum = ((i - 1) / 50) + 1;
+            int seqNum = ((i - 1) % 50) + 1;
+            String username = String.format("20240004%02d%02d", classNum, seqNum);
             String name = randomName();
             String phone = randomPhone();
             batch.add(new Object[]{username, BCRYPT_123456, name, Role.VOLUNTEER, phone, 0, 0});
@@ -138,7 +146,7 @@ public class BulkDataSeeder implements ApplicationRunner {
                 batch);
         return jdbc.queryForList(
                 "SELECT user_id FROM users WHERE username LIKE ? ORDER BY user_id",
-                Integer.class, VOL_PREFIX + "%");
+                Integer.class, "20240004%");
     }
 
     // ---------- activities ----------

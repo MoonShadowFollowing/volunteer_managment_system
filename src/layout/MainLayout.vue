@@ -21,7 +21,7 @@
         </div>
         <div class="header-right">
           <div class="user-id-tag">
-            <span>{{ currentRole === 'superadmin' ? '超级管理员' : currentRole === 'admin' ? '管理员编号：ADM-00001' : currentRole === 'organizer' ? '组织者编号：ORG-13421' : '志愿者编号：VOL-13421' }}</span>
+            <span>{{ displayIdTag }}</span>
           </div>
 
           <el-button v-if="currentRole === 'volunteer' && !hasOrgAuth" type="primary" plain size="small" @click="$router.push('/sys/vol-apply-org')" style="margin-right: 15px;">申请成为组织者</el-button>
@@ -57,6 +57,7 @@ const route = useRoute()
 const currentRole = ref(localStorage.getItem('userRole') || 'volunteer')
 const hasOrgAuth = ref(localStorage.getItem('isOrganizerQualified') === 'true')
 const userName = ref(localStorage.getItem('userName') || '')
+const userUsername = ref(localStorage.getItem('userUsername') || '')
 
 const menus = computed(() => {
   const sysRoutes = router.options.routes.find(r => r.path === '/sys').children
@@ -69,6 +70,27 @@ const switchRole = (targetRole) => {
   localStorage.setItem('userRole', targetRole)
   router.push(targetRole === 'organizer' ? '/sys/dashboard-org' : '/sys/dashboard-volun')
 }
+
+// 计算编号标签
+const displayIdTag = computed(() => {
+  const roleMap = {
+    superadmin: '超级管理员',
+    admin: '管理员',
+    organizer: '组织者',
+    volunteer: '志愿者'
+  }
+  const prefixMap = {
+    admin: 'ADM-',
+    organizer: 'ORG-',
+    volunteer: 'VOL-'
+  }
+  const roleName = roleMap[currentRole.value] || '用户'
+  if (currentRole.value === 'superadmin') {
+    return '超级管理员'
+  }
+  const username = userUsername.value || ''
+  return `${roleName}编号：${prefixMap[currentRole.value] || ''}${username}`
+})
 const logout = async () => {
   try { await logoutApi() } catch (e) { /* 后端 stub，失败也无所谓 */ }
   localStorage.removeItem('token')
@@ -77,6 +99,7 @@ const logout = async () => {
   localStorage.removeItem('isOrganizerQualified')
   localStorage.removeItem('isAdmin')
   localStorage.removeItem('userName')
+  localStorage.removeItem('userUsername')
   localStorage.removeItem('userId')
   router.push('/login')
 }
@@ -90,10 +113,12 @@ onMounted(async () => {
       localStorage.setItem('isOrganizerQualified', String(me.isOrganizerQualified))
       localStorage.setItem('isAdmin', String(me.isAdmin))
       localStorage.setItem('userName', me.name)
+      localStorage.setItem('userUsername', me.username)
       localStorage.setItem('userId', String(me.userId))
       currentRole.value = me.role
       hasOrgAuth.value = me.isOrganizerQualified
       userName.value = me.name
+      userUsername.value = me.username
     } catch (e) {
       // 401 由拦截器统一处理
     }
@@ -104,6 +129,7 @@ watch(() => route.path, () => {
   hasOrgAuth.value = localStorage.getItem('isOrganizerQualified') === 'true'
   currentRole.value = localStorage.getItem('userRole') || 'volunteer'
   userName.value = localStorage.getItem('userName') || userName.value
+  userUsername.value = localStorage.getItem('userUsername') || userUsername.value
 })
 </script>
 
