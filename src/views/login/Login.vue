@@ -42,12 +42,11 @@ const handleLogin = async () => {
     localStorage.setItem('userId', String(user.userId))
 
     ElMessage.success(`欢迎，${user.name}`)
+    // 超级管理员保持原有行为，直接进入管理后台
     if (user.role === 'superadmin') {
       router.push('/sys/super-add')
-    } else if (user.role === 'admin') {
-      router.push('/sys/dashboard-admin')
     } else {
-      // 志愿者/组织者 → 走原有角色选择页（让用户在双身份间挑当前进入身份）
+      // 普通管理员、志愿者、组织者 → 统一进入角色选择页，由用户自行选择以何种身份进入系统
       router.push('/role-select')
     }
   } catch (e) {
