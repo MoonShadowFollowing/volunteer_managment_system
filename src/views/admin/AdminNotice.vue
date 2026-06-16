@@ -8,36 +8,36 @@
         </el-form-item>
         <el-form-item label="通知范围">
           <el-checkbox-group v-model="newNotice.targets">
-            <el-checkbox label="全体志愿者" />
-            <el-checkbox label="全体组织者" />
+            <el-checkbox label="全体志愿者" value="全体志愿者" />
+            <el-checkbox label="全体组织者" value="全体组织者" />
           </el-checkbox-group>
         </el-form-item>
         <el-form-item label="公告正文">
           <el-input v-model="newNotice.content" type="textarea" rows="4" placeholder="请输入通知正文..." />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" icon="Promotion" @click="handleSend">发 送 公 告</el-button>
+          <el-button type="primary" icon="Promotion" :loading="sending" @click="handleSend">发 送 公 告</el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
     <el-card>
       <template #header><span style="font-weight:bold;">历史公告记录</span></template>
-      <el-table :data="pagedData" border>
+      <el-table :data="noticeList" border v-loading="loading">
         <el-table-column label="编号" width="80" align="center">
           <template #default="scope">
             {{ (page - 1) * pageSize + scope.$index + 1 }}
           </template>
         </el-table-column>
         <el-table-column prop="title" label="公告标题" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="targets" label="通知对象" width="180">
+        <el-table-column prop="targets" label="通知对象" width="200">
           <template #default="scope">
-            <el-tag v-for="tag in scope.row.targets" :key="tag" size="small" style="margin-right: 5px">
+            <el-tag v-for="tag in (scope.row.targets || [])" :key="tag" size="small" style="margin-right: 5px">
               {{ tag }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="发布时间" width="180" align="center" />
+        <el-table-column prop="time" label="发布时间" width="180" align="center" />
         <el-table-column label="操作" width="120" align="center">
           <template #default="scope">
             <el-button type="primary" link icon="View" @click="viewNotice(scope.row)">详情</el-button>
@@ -46,14 +46,16 @@
       </el-table>
 
       <div class="pagination-wrap">
-        <div class="page-size-tip">每页显示 {{ pageSize }} 条数据</div>
+        <div class="page-size-tip">共 {{ total }} 条</div>
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="pageSize"
           :page-sizes="[5, 10, 20, 50]"
-          :total="noticeList.length"
+          :total="total"
           layout="total, sizes, prev, pager, next, jumper"
           background
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
         />
       </div>
     </el-card>
@@ -61,7 +63,7 @@
     <el-dialog v-model="dialogVisible" title="公告详情" width="500px">
       <el-descriptions :column="1" border>
         <el-descriptions-item label="标题">{{ currentNotice.title }}</el-descriptions-item>
-        <el-descriptions-item label="发布时间">{{ currentNotice.createTime }}</el-descriptions-item>
+        <el-descriptions-item label="发布时间">{{ currentNotice.time }}</el-descriptions-item>
         <el-descriptions-item label="正文">{{ currentNotice.content }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
@@ -69,13 +71,18 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { sendNotice, listNotices } from '../../api/message'
 
 const page = ref(1)
 const pageSize = ref(5)
+const total = ref(0)
 const dialogVisible = ref(false)
 const currentNotice = ref({})
+const sending = ref(false)
+const loading = ref(false)
+const noticeList = ref([])
 
 const newNotice = ref({
   title: '',
@@ -83,20 +90,40 @@ const newNotice = ref({
   content: ''
 })
 
-const noticeList = ref([
-  { title: '关于五一假期志愿活动的通知', targets: ['全体志愿者'], createTime: '2026-04-20 10:00:00', content: '请各位志愿者注意假期安全。' },
-  { title: '组织者后台系统升级公告', targets: ['全体组织者'], createTime: '2026-04-18 15:30:00', content: '系统将于今晚凌晨进行维护。' }
-])
-
-const pagedData = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return noticeList.value.slice(start, start + pageSize.value)
-})
-
-const handleSend = () => {
-  if (!newNotice.value.title || !newNotice.value.content) return ElMessage.warning('请填写完整信息')
-  ElMessage.success('公告已推送至消息中心！')
+const loadData = async () => {
+  loading.value = true
+  try {
+    const res = await listNotices({ page: page.value, pageSize: pageSize.value })
+    noticeList.value = res.rows || []
+    total.value = res.total || 0
+  } finally {
+    loading.value = false
+  }
 }
+onMounted(loadData)
+
+const handleSend = async () => {
+  if (!newNotice.value.title || !newNotice.value.content) return ElMessage.warning('请填写完整信息')
+  if (!newNotice.value.targets.length) return ElMessage.warning('请至少选择一个通知范围')
+  sending.value = true
+  try {
+    await sendNotice({
+      title: newNotice.value.title,
+      content: newNotice.value.content,
+      targets: newNotice.value.targets
+    })
+    ElMessage.success('公告已推送至消息中心！')
+    newNotice.value.title = ''
+    newNotice.value.content = ''
+    page.value = 1
+    await loadData()
+  } catch (e) { /* 拦截器已提示 */ } finally {
+    sending.value = false
+  }
+}
+
+const handleSizeChange = (v) => { pageSize.value = v; page.value = 1; loadData() }
+const handleCurrentChange = (v) => { page.value = v; loadData() }
 
 const viewNotice = (row) => {
   currentNotice.value = row

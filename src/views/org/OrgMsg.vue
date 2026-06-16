@@ -21,7 +21,7 @@
     </el-card>
 
     <el-card>
-      <el-table :data="pagedMsgs" border>
+      <el-table :data="pagedMsgs" border v-loading="loading">
         <el-table-column label="编号" width="70" align="center">
           <template #default="scope">
             {{ (page - 1) * pageSize + scope.$index + 1 }}
@@ -64,7 +64,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { onMounted, ref, computed } from 'vue'
+import { myMessages } from '../../api/message'
 
 const queryType = ref('')
 const queryDate = ref([])
@@ -72,21 +73,19 @@ const page = ref(1)
 const pageSize = ref(10)
 const detailVisible = ref(false)
 const currentMsg = ref({})
+const msgs = ref([])
+const loading = ref(false)
 
-const msgs = ref([
-  {
-    time: '2026-04-01 10:00:00',
-    type: '活动通知',
-    title: '您的志愿活动已通过审核',
-    content: '您提交的【图书馆整理服务】已通过管理员审核，活动已正式发布至客户端，请及时关注报名人数。'
-  },
-  {
-    time: '2026-04-02 09:30:00',
-    type: '系统公告',
-    title: '系统维护通知',
-    content: '平台将于本周六凌晨进行系统升级维护，届时组织者后台将暂时无法访问，请提前做好工作安排。'
+const loadData = async () => {
+  loading.value = true
+  try {
+    const res = await myMessages({ page: 1, pageSize: 500 })
+    msgs.value = res.rows || []
+  } finally {
+    loading.value = false
   }
-])
+}
+onMounted(loadData)
 
 const filteredMsgs = computed(() => {
   return msgs.value.filter(item => {

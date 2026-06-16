@@ -16,11 +16,11 @@
     </el-card>
 
     <el-card>
-      <el-table :data="pagedData" border>
+      <el-table :data="list" border v-loading="loading">
         <el-table-column label="序号" width="80" align="center">
           <template #default="scope">{{ (page - 1) * pageSize + scope.$index + 1 }}</template>
         </el-table-column>
-        <el-table-column prop="adminNo" label="管理员编号" align="center" />
+        <el-table-column prop="userNo" label="管理员编号" align="center" />
         <el-table-column prop="name" label="姓名" align="center" />
         <el-table-column label="操作" width="180" align="center">
           <template #default="scope">
@@ -32,14 +32,16 @@
       </el-table>
 
       <div class="pagination-wrap">
-        <div class="page-size-tip">每页显示 {{ pageSize }} 条数据</div>
+        <div class="page-size-tip">共 {{ total }} 条</div>
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="pageSize"
-          :page-sizes="[5, 10, 20]"
-          :total="filteredList.length"
+          :page-sizes="[10, 20, 50]"
+          :total="total"
           layout="total, sizes, prev, pager, next, jumper"
           background
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
         />
       </div>
     </el-card>
@@ -47,48 +49,52 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { admins, revokeAdmin } from '../../api/user'
 
 const queryId = ref('')
 const queryName = ref('')
 const page = ref(1)
 const pageSize = ref(10)
+const total = ref(0)
+const list = ref([])
+const loading = ref(false)
 
-// 模拟现有管理员数据
-const adminList = ref([
-  { adminNo: 'ADM-10001', name: '赵主管' },
-  { adminNo: 'ADM-10002', name: '钱干事' },
-  { adminNo: 'ADM-10003', name: '孙老师' }
-])
+const loadData = async () => {
+  loading.value = true
+  try {
+    const res = await admins({
+      name: queryName.value || undefined,
+      userNo: queryId.value || undefined,
+      page: page.value,
+      pageSize: pageSize.value
+    })
+    list.value = res.rows || []
+    total.value = res.total || 0
+  } finally {
+    loading.value = false
+  }
+}
+onMounted(loadData)
 
-const filteredList = computed(() => {
-  return adminList.value.filter(item => {
-    const matchId = !queryId.value || item.adminNo.includes(queryId.value)
-    const matchName = !queryName.value || item.name.includes(queryName.value)
-    return matchId && matchName
-  })
-})
-
-const pagedData = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return filteredList.value.slice(start, start + pageSize.value)
-})
-
-const handleSearch = () => { page.value = 1 }
-const handleReset = () => { queryId.value = ''; queryName.value = ''; page.value = 1 }
+const handleSearch = () => { page.value = 1; loadData() }
+const handleReset = () => { queryId.value = ''; queryName.value = ''; page.value = 1; loadData() }
+const handleSizeChange = (v) => { pageSize.value = v; page.value = 1; loadData() }
+const handleCurrentChange = (v) => { page.value = v; loadData() }
 
 const handleDelete = (row) => {
-  ElMessageBox.confirm(`确定移除【${row.name}】的管理员权限吗？移除后不可恢复。`, '危险操作确认', { 
+  ElMessageBox.confirm(`确定移除【${row.name}】的管理员权限吗？移除后不可恢复。`, '危险操作确认', {
     type: 'error',
     confirmButtonText: '确定移除',
     cancelButtonText: '取消'
   })
-    .then(() => {
+    .then(async () => {
+      await revokeAdmin(row.userId)
       ElMessage.success(`已成功撤销【${row.name}】的管理员权限。`)
-      adminList.value = adminList.value.filter(item => item.adminNo !== row.adminNo)
+      await loadData()
     })
-    .catch(() => {}) // 防止取消报错
+    .catch(() => {})
 }
 </script>
 

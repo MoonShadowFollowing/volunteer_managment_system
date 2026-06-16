@@ -3,9 +3,10 @@
     <el-card class="mb-20">
       <el-form :inline="true">
         <el-form-item label="消息类型">
-          <el-select v-select v-model="queryType" placeholder="请选择" clearable style="width:150px">
+          <el-select v-model="queryType" placeholder="请选择" clearable style="width:150px">
             <el-option label="报名通知" value="报名通知" />
             <el-option label="资质审核" value="资质审核" />
+            <el-option label="活动通知" value="活动通知" />
             <el-option label="系统公告" value="系统公告" />
           </el-select>
         </el-form-item>
@@ -23,7 +24,7 @@
     </el-card>
 
     <el-card>
-      <el-table :data="pagedMsgs" border>
+      <el-table :data="pagedMsgs" border v-loading="loading">
         <el-table-column label="编号" width="70" align="center">
           <template #default="scope">
             {{ (page - 1) * pageSize + scope.$index + 1 }}
@@ -45,7 +46,7 @@
       </el-table>
 
       <div class="pagination-wrap">
-        <div class="page-size-tip">每页显示 {{ pageSize }} 条</div>
+        <div class="page-size-tip">共 {{ filteredMsgs.length }} 条</div>
         <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="filteredMsgs.length"
           layout="total, prev, pager, next, jumper" background />
       </div>
@@ -66,7 +67,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { onMounted, ref, computed } from 'vue'
+import { myMessages } from '../../api/message'
 
 const queryType = ref('')
 const queryDate = ref([])
@@ -74,33 +76,25 @@ const page = ref(1)
 const pageSize = ref(10)
 const detailVisible = ref(false)
 const currentMsg = ref({})
+const msgs = ref([])
+const loading = ref(false)
 
-const msgs = ref([
-  {
-    time: '2026-04-28 10:00:00',
-    type: '系统公告',
-    title: '关于五一期间志愿活动规范管理的通知',
-    content: '各位志愿者，五一期间请务必按照各活动点位要求进行签到签退，注意安全防护。详细规范请点击附件查看。'
-  },
-  {
-    time: '2026-04-27 15:30:00',
-    type: '资质审核',
-    title: '组织者资质审核通过',
-    content: '恭喜您！您提交的申请成为组织者的资料已通过管理员审核，现在您可以切换身份发布活动了。'
-  },
-  {
-    time: '2026-04-26 09:00:00',
-    type: '报名通知',
-    title: '活动报名成功提醒',
-    content: '您报名的【南门指引服务】已审核通过，请准时参加。'
+const loadData = async () => {
+  loading.value = true
+  try {
+    const res = await myMessages({ page: 1, pageSize: 500 })
+    msgs.value = res.rows || []
+  } finally {
+    loading.value = false
   }
-])
+}
+onMounted(loadData)
 
 const filteredMsgs = computed(() => {
   return msgs.value.filter(item => {
     const matchType = !queryType.value || item.type === queryType.value
-    const itemDate = item.time.split(' ')[0]
-    const matchDate = !queryDate.value || queryDate.value.length === 0 || 
+    const itemDate = (item.time || '').split(' ')[0]
+    const matchDate = !queryDate.value || queryDate.value.length === 0 ||
                      (itemDate >= queryDate.value[0] && itemDate <= queryDate.value[1])
     return matchType && matchDate
   })

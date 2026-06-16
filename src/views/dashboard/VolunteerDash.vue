@@ -1,21 +1,45 @@
 <template>
-  <div>
+  <div v-loading="loading">
     <el-row :gutter="20" class="mb-20">
-      <el-col :span="12">
+      <el-col :span="8">
         <el-card class="stat-card">
           <h3>我的累计工时</h3>
-          <p class="num">36 <span>小时 &nbsp; </span>30 <span>分钟</span></p>
+          <p class="num">{{ m.totalHours || 0 }} <span>小时 &nbsp; </span>{{ m.totalMinutes || 0 }} <span>分钟</span></p>
         </el-card>
       </el-col>
-      <el-col :span="12">
+      <el-col :span="8">
         <el-card class="stat-card">
           <h3>已获证书</h3>
-          <p class="num">2 <span>张</span></p>
+          <p class="num">{{ m.certificateCount || 0 }} <span>张</span></p>
+        </el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card class="stat-card">
+          <h3>已通过报名</h3>
+          <p class="num">{{ m.approvedRegCount || 0 }} <span>个</span></p>
         </el-card>
       </el-col>
     </el-row>
   </div>
 </template>
+
+<script setup>
+import { onMounted, ref } from 'vue'
+import { dashboard } from '../../api/stat'
+
+const m = ref({})
+const loading = ref(false)
+onMounted(async () => {
+  loading.value = true
+  try {
+    const res = await dashboard()
+    m.value = res.metrics || {}
+  } finally {
+    loading.value = false
+  }
+})
+</script>
+
 <style scoped>
 .mb-20 { margin-bottom: 20px; }
 .stat-card { text-align: center; color: #e63946; }

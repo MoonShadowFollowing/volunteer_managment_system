@@ -5,14 +5,6 @@
     <el-card class="mb-20">
       <el-form :inline="true">
 
-        <el-form-item label="活动编号">
-          <el-input
-            placeholder="模糊查询活动编号"
-            style="width: 150px"
-            clearable
-          />
-        </el-form-item>
-
         <el-form-item label="活动名称">
           <el-input
             v-model="queryForm.actName"
@@ -22,14 +14,23 @@
           />
         </el-form-item>
 
-        <el-form-item label="活动时间">
+        <el-form-item label="审核状态">
+          <el-select v-model="queryForm.auditStatus" placeholder="全部" clearable style="width: 140px">
+            <el-option label="待审核" value="待审核" />
+            <el-option label="审核通过" value="审核通过" />
+            <el-option label="审核不通过" value="审核不通过" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="活动日期">
           <el-date-picker
             v-model="queryForm.timeRange"
-            type="datetimerange"
+            type="daterange"
             range-separator="至"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
-            style="width: 300px"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="width: 250px"
             clearable
           />
         </el-form-item>
@@ -48,7 +49,7 @@
 
     <!-- 表格 -->
     <el-card>
-      <el-table :data="pagedData" border>
+      <el-table :data="tableData" border v-loading="loading">
 
         <!-- 编号 -->
         <el-table-column label="编号" width="80" align="center">
@@ -58,9 +59,8 @@
         </el-table-column>
 
         <el-table-column prop="actNo" label="活动编号" width="140" align="center" />
-        <el-table-column prop="actName" label="活动名称" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="name" label="活动名称" min-width="180" show-overflow-tooltip />
 
-        <!-- 时间双列结构（规范保留） -->
         <el-table-column label="活动开始时间" width="180" align="center">
           <template #default="scope">
             {{ scope.row.startTime }}
@@ -75,18 +75,18 @@
 
         <el-table-column prop="limitNum" label="招募人数" width="100" align="center" />
 
-        <el-table-column prop="status" label="审核状态" width="130" align="center">
+        <el-table-column prop="auditStatus" label="审核状态" width="130" align="center">
           <template #default="scope">
             <el-tag
               :type="
-                scope.row.status === '已发布'
+                scope.row.auditStatus === '审核通过'
                   ? 'success'
-                  : scope.row.status === '已驳回'
+                  : scope.row.auditStatus === '审核不通过'
                   ? 'danger'
                   : 'warning'
               "
             >
-              {{ scope.row.status }}
+              {{ scope.row.auditStatus }}
             </el-tag>
           </template>
         </el-table-column>
@@ -105,19 +105,19 @@
             </el-button>
 
             <el-button
-              v-if="scope.row.status === '待审核'"
+              v-if="scope.row.auditStatus === '待审核'"
               type="success"
               size="small"
-              @click="handleAction(scope.row, 'approve')"
+              @click="handleAction(scope.row, true)"
             >
               批准
             </el-button>
 
             <el-button
-              v-if="scope.row.status === '待审核'"
+              v-if="scope.row.auditStatus === '待审核'"
               type="danger"
               size="small"
-              @click="handleAction(scope.row, 'reject')"
+              @click="handleAction(scope.row, false)"
             >
               驳回
             </el-button>
@@ -129,13 +129,13 @@
 
       <!-- 分页 -->
       <div class="pagination-wrap">
-        <div class="page-size-tip">每页显示 {{ pageSize }} 条数据</div>
+        <div class="page-size-tip">共 {{ total }} 条数据</div>
 
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="pageSize"
           :page-sizes="[5, 10, 20, 50]"
-          :total="filteredList.length"
+          :total="total"
           layout="total, sizes, prev, pager, next, jumper"
           background
           @size-change="handleSizeChange"
@@ -150,7 +150,8 @@
       <el-descriptions :column="1" border>
 
         <el-descriptions-item label="活动编号">{{ currentAct.actNo }}</el-descriptions-item>
-        <el-descriptions-item label="活动名称">{{ currentAct.actName }}</el-descriptions-item>
+        <el-descriptions-item label="活动名称">{{ currentAct.name }}</el-descriptions-item>
+        <el-descriptions-item label="组织者">{{ currentAct.organizerName }}</el-descriptions-item>
 
         <el-descriptions-item label="开始时间">{{ currentAct.startTime }}</el-descriptions-item>
         <el-descriptions-item label="结束时间">{{ currentAct.endTime }}</el-descriptions-item>
@@ -170,92 +171,67 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { listActivities, auditActivity } from '../../api/activity'
 
-/* 查询 */
 const queryForm = ref({
   actName: '',
+  auditStatus: '',
   timeRange: []
 })
 
-/* 分页 */
 const page = ref(1)
 const pageSize = ref(5)
+const total = ref(0)
+const tableData = ref([])
+const loading = ref(false)
 
-/* 数据 */
-const actList = ref([
-  {
-    actNo: '202605200001',
-    actName: '南门指引服务',
-    startTime: '2026-05-20 08:00:00',
-    endTime: '2026-05-20 12:00:00',
-    location: '学校南门',
-    limitNum: 15,
-    desc: '在校门指引外来人员，维护交通秩序。',
-    status: '待审核'
-  },
-  {
-    actNo: '202605200002',
-    actName: '校园清扫行动',
-    startTime: '2026-05-21 09:00:00',
-    endTime: '2026-05-21 11:30:00',
-    location: '全校范围',
-    limitNum: 10,
-    desc: '校园卫生清洁志愿活动。',
-    status: '已驳回'
+const loadData = async () => {
+  loading.value = true
+  try {
+    const range = queryForm.value.timeRange || []
+    const res = await listActivities({
+      name: queryForm.value.actName || undefined,
+      auditStatus: queryForm.value.auditStatus || undefined,
+      startDate: range.length === 2 ? range[0] : undefined,
+      endDate: range.length === 2 ? range[1] : undefined,
+      page: page.value,
+      pageSize: pageSize.value
+    })
+    tableData.value = res.rows || []
+    total.value = res.total || 0
+  } catch (e) {
+    /* 拦截器已提示 */
+  } finally {
+    loading.value = false
   }
-])
+}
 
-/* 过滤 */
-const filteredList = computed(() => {
-  return actList.value.filter(item => {
-    const nameMatch =
-      !queryForm.value.actName ||
-      item.actName.includes(queryForm.value.actName)
-
-    let timeMatch = true
-    if (queryForm.value.timeRange?.length === 2) {
-      const start = new Date(queryForm.value.timeRange[0]).getTime()
-      const end = new Date(queryForm.value.timeRange[1]).getTime()
-      const actTime = new Date(item.startTime).getTime()
-      timeMatch = actTime >= start && actTime <= end
-    }
-
-    return nameMatch && timeMatch
-  })
-})
-
-/* 分页数据 */
-const pagedData = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return filteredList.value.slice(start, start + pageSize.value)
-})
+onMounted(loadData)
 
 const handleSearch = () => {
   page.value = 1
-  ElMessage.success('查询完成')
+  loadData()
 }
 
 const resetSearch = () => {
-  queryForm.value = {
-    actName: '',
-    timeRange: []
-  }
+  queryForm.value = { actName: '', auditStatus: '', timeRange: [] }
   page.value = 1
+  loadData()
 }
 
-/* 分页事件 */
 const handleSizeChange = (val) => {
   pageSize.value = val
   page.value = 1
+  loadData()
 }
 
 const handleCurrentChange = (val) => {
   page.value = val
+  loadData()
 }
 
-/* 详情 */
 const dialogVisible = ref(false)
 const currentAct = ref({})
 
@@ -264,23 +240,15 @@ const viewDetail = (row) => {
   dialogVisible.value = true
 }
 
-/* 审核逻辑 */
-const handleAction = (row, type) => {
-  if (type === 'reject') {
-    row.status = '已驳回'
-    ElMessage.warning('已驳回该活动！')
-  } else {
-    ElMessageBox.confirm(
-      '确认批准该活动上线？批准后状态自动变为已发布。',
-      '确认操作',
-      { type: 'success' }
-    )
-      .then(() => {
-        row.status = '已发布'
-        ElMessage.success('活动已批准上线！通知已送达。')
-      })
-      .catch(() => {})
-  }
+const handleAction = (row, approve) => {
+  const tip = approve ? '确认批准该活动？批准后组织者即可开启前台发布。' : '确认驳回该活动？'
+  ElMessageBox.confirm(tip, '审核确认', { type: approve ? 'success' : 'warning' })
+    .then(async () => {
+      await auditActivity(row.activityId, approve)
+      ElMessage.success(approve ? '活动已批准！' : '已驳回该活动！')
+      await loadData()
+    })
+    .catch(() => {})
 }
 </script>
 

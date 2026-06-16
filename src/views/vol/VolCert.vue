@@ -4,28 +4,15 @@
     <!-- 查询 -->
     <el-card class="mb-20">
       <el-form :inline="true">
-        <el-form-item label="证书编号">
-          <el-input placeholder="查询证书编号" style="width: 150px" clearable />
-        </el-form-item>
-
-        <el-form-item label="活动编号">
-          <el-input placeholder="查询活动编号" style="width: 150px" clearable />
-        </el-form-item>
-
         <el-form-item label="活动名称">
-          <el-input v-model="queryName" placeholder="查询活动名称" style="width: 150px" clearable />
+          <el-input v-model="queryName" placeholder="查询活动名称" style="width: 180px" clearable />
         </el-form-item>
 
-        <el-form-item label="活动日期">
-          <el-date-picker
-            v-model="queryDate"
-            type="daterange"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
-            value-format="YYYY-MM-DD"
-            style="width: 250px"
-            clearable
-          />
+        <el-form-item label="证书状态">
+          <el-select v-model="queryStatus" placeholder="全部" clearable style="width: 140px">
+            <el-option label="有效" value="有效" />
+            <el-option label="已失效" value="已失效" />
+          </el-select>
         </el-form-item>
 
         <el-form-item>
@@ -37,25 +24,22 @@
 
     <!-- 表格 -->
     <el-card>
-      <el-table :data="pagedCertList" border>
+      <el-table :data="pagedCertList" border v-loading="loading">
 
-        <!-- 编号 -->
         <el-table-column label="编号" width="60" align="center">
           <template #default="scope">
             {{ (page - 1) * pageSize + scope.$index + 1 }}
           </template>
         </el-table-column>
 
-        <el-table-column prop="certId" label="证书编号" min-width="150" align="center" />
+        <el-table-column prop="certId" label="证书编号" min-width="120" align="center" />
         <el-table-column prop="certName" label="证书标题" min-width="180" />
         <el-table-column prop="activityName" label="对应活动" min-width="160" />
         <el-table-column prop="actNo" label="对应活动编号" width="140" align="center" />
 
-        <!-- 时间 -->
         <el-table-column prop="startTime" label="开始时间" width="180" align="center"/>
         <el-table-column prop="endTime" label="结束时间" width="180" align="center"/>
 
-        <!-- 工时结构化 -->
         <el-table-column label="认证工时" width="130" align="center">
           <template #default="scope">
             <strong style="color: #e63946">
@@ -72,35 +56,25 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="120" align="center">
+        <el-table-column label="操作" width="130" align="center">
           <template #default="scope">
             <el-button
               size="small"
               type="primary"
               link
               :disabled="scope.row.status === '已失效'"
-              @click="previewCert(scope.row)"
+              :loading="downloadingId === scope.row.certId"
+              @click="downloadCert(scope.row)"
             >
-              预览
-            </el-button>
-
-            <el-button
-              size="small"
-              type="primary"
-              link
-              :disabled="scope.row.status === '已失效'"
-              @click="downloadCert"
-            >
-              下载
+              下载证书
             </el-button>
           </template>
         </el-table-column>
 
       </el-table>
 
-      <!-- 分页 -->
       <div class="pagination-wrap">
-        <div class="page-size-tip">每页显示 {{ pageSize }} 条数据</div>
+        <div class="page-size-tip">共 {{ filteredCertList.length }} 条</div>
 
         <el-pagination
           v-model:current-page="page"
@@ -117,53 +91,34 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { myCertificates, downloadCertPdf } from '../../api/certificate'
 
 const queryName = ref('')
+const queryStatus = ref('')
 const page = ref(1)
 const pageSize = ref(5)
+const certList = ref([])
+const loading = ref(false)
+const downloadingId = ref(null)
 
-/* hours + minutes 结构 */
-const certList = ref([
-  {
-    certId: 1234567891012345,
-    certName: '优秀青年志愿者证明',
-    activityName: '校园环境清扫',
-    actNo: '202605001001',
-    startTime: '2026-05-01 08:00:00',
-    endTime: '2026-05-01 11:00:00',
-    hours: 4,
-    minutes: 0,
-    status: '有效'
-  },
-  {
-    certId: 1234567891012312,
-    certName: '马拉松后勤服务证明',
-    activityName: '市马拉松后勤',
-    actNo: '202606100001',
-    startTime: '2026-06-10 05:30:00',
-    endTime: '2026-06-10 12:00:00',
-    hours: 0,
-    minutes: 0,
-    status: '已失效'
-  },
-  {
-    certId: 1237654891012345,
-    certName: '防诈骗宣讲先锋',
-    activityName: '社区防诈骗宣讲',
-    actNo: '202605100002',
-    startTime: '2026-05-10 14:00:00',
-    endTime: '2026-05-10 16:30:00',
-    hours: 2,
-    minutes: 30,
-    status: '有效'
+const loadData = async () => {
+  loading.value = true
+  try {
+    const res = await myCertificates({ page: 1, pageSize: 500 })
+    certList.value = res.rows || []
+  } finally {
+    loading.value = false
   }
-])
+}
+onMounted(loadData)
 
 const filteredCertList = computed(() => {
   return certList.value.filter(item => {
-    return !queryName.value || item.activityName.includes(queryName.value)
+    const matchName = !queryName.value || (item.activityName || '').includes(queryName.value)
+    const matchStatus = !queryStatus.value || item.status === queryStatus.value
+    return matchName && matchStatus
   })
 })
 
@@ -172,21 +127,19 @@ const pagedCertList = computed(() => {
   return filteredCertList.value.slice(start, start + pageSize.value)
 })
 
-const handleSearch = () => {
-  page.value = 1
-}
+const handleSearch = () => { page.value = 1 }
+const handleReset = () => { queryName.value = ''; queryStatus.value = ''; page.value = 1 }
 
-const handleReset = () => {
-  queryName.value = ''
-  page.value = 1
-}
-
-const previewCert = (row) => {
-  ElMessage.success(`正在预览: ${row.certName}`)
-}
-
-const downloadCert = () => {
-  ElMessage.success('证书已开始下载！')
+const downloadCert = async (row) => {
+  downloadingId.value = row.certId
+  try {
+    await downloadCertPdf(row.certId, `${row.certName || '证书'}-${row.certId}.pdf`)
+    ElMessage.success('证书下载已开始')
+  } catch (e) {
+    ElMessage.error('下载失败，请确认证书有效')
+  } finally {
+    downloadingId.value = null
+  }
 }
 </script>
 

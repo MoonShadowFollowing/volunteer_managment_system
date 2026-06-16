@@ -1,0 +1,53 @@
+### Java ###
+*.class
+*.log
+*.ctxt
+.mtj.tmp/
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+### Maven ###
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+### Eclipse ###
+.classpath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+### VSCode ###
+.vscode/
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Runtime upload dir ###
+uploads/
+
+### Local config (uncomment if you want to keep db credentials out of git) ###
+# src/main/resources/application-dev.yml

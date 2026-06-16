@@ -16,12 +16,13 @@
     </el-card>
 
     <el-card>
-      <el-table :data="pagedData" border>
+      <el-table :data="list" border v-loading="loading">
         <el-table-column label="序号" width="80" align="center">
           <template #default="scope">{{ (page - 1) * pageSize + scope.$index + 1 }}</template>
         </el-table-column>
         <el-table-column prop="userNo" label="人员编号" align="center" />
         <el-table-column prop="name" label="姓名" align="center" />
+        <el-table-column prop="role" label="当前角色" align="center" />
         <el-table-column label="操作" width="180" align="center">
           <template #default="scope">
             <el-button type="success" size="small" icon="Plus" @click="handleAdd(scope.row)">
@@ -32,14 +33,16 @@
       </el-table>
 
       <div class="pagination-wrap">
-        <div class="page-size-tip">每页显示 {{ pageSize }} 条数据</div>
+        <div class="page-size-tip">共 {{ total }} 条</div>
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="pageSize"
-          :page-sizes="[5, 10, 20]"
-          :total="filteredList.length"
+          :page-sizes="[10, 20, 50]"
+          :total="total"
           layout="total, sizes, prev, pager, next, jumper"
           background
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
         />
       </div>
     </el-card>
@@ -47,45 +50,48 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { promotable, promoteAdmin } from '../../api/user'
 
 const queryId = ref('')
 const queryName = ref('')
 const page = ref(1)
 const pageSize = ref(10)
+const total = ref(0)
+const list = ref([])
+const loading = ref(false)
 
-// 模拟普通人员/志愿者数据库
-const userList = ref([
-  { userNo: 'VOL-20241', name: '王大锤' },
-  { userNo: 'VOL-20242', name: '李梅梅' },
-  { userNo: 'VOL-20243', name: '张小强' }
-])
+const loadData = async () => {
+  loading.value = true
+  try {
+    const res = await promotable({
+      name: queryName.value || undefined,
+      userNo: queryId.value || undefined,
+      page: page.value,
+      pageSize: pageSize.value
+    })
+    list.value = res.rows || []
+    total.value = res.total || 0
+  } finally {
+    loading.value = false
+  }
+}
+onMounted(loadData)
 
-const filteredList = computed(() => {
-  return userList.value.filter(item => {
-    const matchId = !queryId.value || item.userNo.includes(queryId.value)
-    const matchName = !queryName.value || item.name.includes(queryName.value)
-    return matchId && matchName
-  })
-})
-
-const pagedData = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return filteredList.value.slice(start, start + pageSize.value)
-})
-
-const handleSearch = () => { page.value = 1 }
-const handleReset = () => { queryId.value = ''; queryName.value = ''; page.value = 1 }
+const handleSearch = () => { page.value = 1; loadData() }
+const handleReset = () => { queryId.value = ''; queryName.value = ''; page.value = 1; loadData() }
+const handleSizeChange = (v) => { pageSize.value = v; page.value = 1; loadData() }
+const handleCurrentChange = (v) => { page.value = v; loadData() }
 
 const handleAdd = (row) => {
   ElMessageBox.confirm(`确定将【${row.name}】提升为系统管理员吗？`, '授权确认', { type: 'warning' })
-    .then(() => {
+    .then(async () => {
+      await promoteAdmin(row.userId)
       ElMessage.success('设置成功！该用户已获取管理员权限。')
-      // 模拟前端移除该行
-      userList.value = userList.value.filter(item => item.userNo !== row.userNo)
+      await loadData()
     })
-    .catch(() => {}) // 防止取消报错
+    .catch(() => {})
 }
 </script>
 

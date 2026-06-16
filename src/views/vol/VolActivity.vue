@@ -5,9 +5,6 @@
     <div v-if="!showDetail">
       <el-card class="mb-20">
         <el-form :inline="true">
-          <el-form-item label="活动编号">
-            <el-input placeholder="查询活动编号" clearable />
-          </el-form-item>
           <el-form-item label="活动名称">
             <el-input v-model="queryName" placeholder="模糊查询" clearable />
           </el-form-item>
@@ -30,9 +27,8 @@
       </el-card>
 
       <el-card>
-        <el-table :data="pagedList" border>
+        <el-table :data="list" border v-loading="loading">
 
-          <!-- 编号 -->
           <el-table-column label="编号" width="80" align="center">
             <template #default="scope">
               {{ (page - 1) * pageSize + scope.$index + 1 }}
@@ -43,16 +39,19 @@
 
           <el-table-column prop="name" label="活动名称" />
 
-          <!-- 时间拆分 -->
           <el-table-column prop="startTime" label="开始时间" width="180" align="center"/>
           <el-table-column prop="endTime" label="结束时间" width="180" align="center"/>
-                    
-          <el-table-column prop="limitNum" label="招募人数" width="90" align="center" />
 
-          <el-table-column prop="status" label="状态" width="100" align="center">
+          <el-table-column label="报名情况" width="110" align="center">
             <template #default="scope">
-              <el-tag :type="scope.row.status==='可报名'?'success':'info'">
-                {{scope.row.status}}
+              {{ scope.row.enrolledNum }} / {{ scope.row.limitNum }}
+            </template>
+          </el-table-column>
+
+          <el-table-column label="状态" width="100" align="center">
+            <template #default="scope">
+              <el-tag :type="isFull(scope.row) ? 'info' : 'success'">
+                {{ isFull(scope.row) ? '已满' : '可报名' }}
               </el-tag>
             </template>
           </el-table-column>
@@ -64,16 +63,17 @@
           </el-table-column>
         </el-table>
 
-        <!-- 分页（统一标准） -->
         <div class="pagination-wrap">
-          <div class="page-size-tip">每页显示 {{ pageSize }} 条数据</div>
+          <div class="page-size-tip">共 {{ total }} 条数据</div>
           <el-pagination
             v-model:current-page="page"
             v-model:page-size="pageSize"
             :page-sizes="[5, 10, 20, 50]"
-            :total="filteredList.length"
+            :total="total"
             layout="total, sizes, prev, pager, next, jumper"
             background
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
           />
         </div>
       </el-card>
@@ -92,15 +92,12 @@
 
           <el-descriptions-item label="活动名称">{{ currentAct.name }}</el-descriptions-item>
 
-          <el-descriptions-item label="活动状态">
-            <el-tag type="success">{{ currentAct.status }}</el-tag>
-          </el-descriptions-item>
+          <el-descriptions-item label="组织者">{{ currentAct.organizerName }}</el-descriptions-item>
 
           <el-descriptions-item label="报名情况">
             <strong style="color: #e63946;">{{ currentAct.enrolledNum }} / {{ currentAct.limitNum }}</strong> 人
           </el-descriptions-item>
 
-          <!-- 时间拆分（保持统一规范） -->
           <el-descriptions-item label="开始时间">
             {{ currentAct.startTime }}
           </el-descriptions-item>
@@ -109,16 +106,23 @@
             {{ currentAct.endTime }}
           </el-descriptions-item>
 
-          <el-descriptions-item label="活动地点">中心广场</el-descriptions-item>
+          <el-descriptions-item label="活动地点">{{ currentAct.location }}</el-descriptions-item>
 
           <el-descriptions-item label="活动简介" :span="2">
-            这是一场非常有意义的校园清洁志愿服务活动。
+            {{ currentAct.desc || '暂无简介' }}
           </el-descriptions-item>
         </el-descriptions>
 
         <div style="margin-top: 30px; text-align: center;">
-          <el-button type="primary" size="large" style="width: 200px" @click="apply">
-            报 名
+          <el-button
+            type="primary"
+            size="large"
+            style="width: 200px"
+            :loading="applying"
+            :disabled="isFull(currentAct)"
+            @click="apply"
+          >
+            {{ isFull(currentAct) ? '名额已满' : '报 名' }}
           </el-button>
         </div>
       </el-card>
@@ -128,59 +132,51 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+import { onMounted, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { listActivities } from '../../api/activity'
+import { register } from '../../api/registration'
 
-/* 查询 */
 const queryName = ref('')
+const queryDate = ref([])
 
-/* 分页 */
 const page = ref(1)
 const pageSize = ref(5)
+const total = ref(0)
+const list = ref([])
+const loading = ref(false)
+const applying = ref(false)
 
-/* 数据（补全+覆盖情况） */
-const list = ref([
-  {
-    actNo: '202605010001',
-    name: '校园清扫',
-    startTime: '2026-05-01 08:00:00',
-    endTime: '2026-05-01 11:00:00',
-    status: '可报名',
-    limitNum: 15,
-    enrolledNum: 8
-  },
-  {
-    actNo: '202605100001',
-    name: '社区敬老服务',
-    startTime: '2026-05-10 09:00:00',
-    endTime: '2026-05-10 12:00:00',
-    status: '已结束',
-    limitNum: 10,
-    enrolledNum: 10
+const isFull = (row) => row && row.limitNum != null && row.enrolledNum >= row.limitNum
+
+const loadData = async () => {
+  loading.value = true
+  try {
+    const range = queryDate.value || []
+    const res = await listActivities({
+      volunteerView: true,
+      name: queryName.value || undefined,
+      startDate: range.length === 2 ? range[0] : undefined,
+      endDate: range.length === 2 ? range[1] : undefined,
+      page: page.value,
+      pageSize: pageSize.value
+    })
+    list.value = res.rows || []
+    total.value = res.total || 0
+  } catch (e) {
+    /* 拦截器已提示 */
+  } finally {
+    loading.value = false
   }
-])
-
-/* 查询过滤 */
-const filteredList = computed(()=>{
-  return list.value.filter(item =>
-    !queryName.value || item.name.includes(queryName.value)
-  )
-})
-
-/* 分页数据 */
-const pagedList = computed(()=>{
-  const start = (page.value - 1) * pageSize.value
-  return filteredList.value.slice(start, start + pageSize.value)
-})
-
-const handleSearch = ()=>{ page.value = 1 }
-
-const handleReset = ()=>{
-  queryName.value = ''
-  page.value = 1
 }
 
-/* 原逻辑 */
+onMounted(loadData)
+
+const handleSearch = () => { page.value = 1; loadData() }
+const handleReset = () => { queryName.value = ''; queryDate.value = []; page.value = 1; loadData() }
+const handleSizeChange = (val) => { pageSize.value = val; page.value = 1; loadData() }
+const handleCurrentChange = (val) => { page.value = val; loadData() }
+
 const showDetail = ref(false)
 const currentAct = ref({})
 
@@ -190,8 +186,21 @@ const goDetail = (row) => {
 }
 
 const apply = () => {
-  ElMessage.success('报名申请已提交！')
-  showDetail.value = false
+  ElMessageBox.confirm(`确定报名【${currentAct.value.name}】吗？`, '报名确认', { type: 'info' })
+    .then(async () => {
+      applying.value = true
+      try {
+        await register(currentAct.value.activityId)
+        ElMessage.success('报名申请已提交，等待组织者审核！')
+        showDetail.value = false
+        await loadData()
+      } catch (e) {
+        /* 拦截器已提示 */
+      } finally {
+        applying.value = false
+      }
+    })
+    .catch(() => {})
 }
 </script>
 
