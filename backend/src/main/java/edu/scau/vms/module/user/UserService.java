@@ -42,7 +42,9 @@ public class UserService {
     public PageResult<UserSummaryVO> promotable(Long page, Long size, String name, String userNo) {
         LambdaQueryWrapper<User> qw = new LambdaQueryWrapper<>();
         qw.eq(User::getIsAdmin, false)
-          .ne(User::getRole, Role.SUPERADMIN);
+          .ne(User::getRole, Role.SUPERADMIN)
+          // 仅允许 username 长度为 8 位的用户被提升为管理员（学号/工号格式）
+          .apply("LENGTH(username) = 8");
         if (name != null && !name.isBlank()) qw.like(User::getName, name);
         if (userNo != null && !userNo.isBlank()) {
             String numeric = userNo.replaceAll("[^0-9]", "");
@@ -100,8 +102,14 @@ public class UserService {
         if (Boolean.TRUE.equals(u.getIsAdmin())) {
             throw new BizException(ErrorCode.BIZ_CONFLICT, "该用户已经是管理员");
         }
+        // 校验：仅允许 username 长度为 8 位的用户被提升为管理员
+        if (u.getUsername() == null || u.getUsername().length() != 8) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "仅允许用户名为 8 位（学号/工号格式）的用户成为管理员");
+        }
         u.setIsAdmin(true);
         u.setRole(Role.ADMIN);
+        // 方案三：管理员自动获得组织者资质（管理员 ⊇ 组织者 ⊇ 志愿者）
+        u.setIsOrganizer(true);
         userMapper.updateById(u);
         messageService.sendDirect(userId, MsgType.QUAL_AUDIT,
                 "您已获得系统管理员权限",
@@ -135,6 +143,11 @@ public class UserService {
         if (!Boolean.TRUE.equals(u.getIsOrganizer())) {
             throw new BizException(ErrorCode.BIZ_CONFLICT, "该用户没有组织者资质");
         }
+        // 方案三：管理员身份不可被撤销组织者资质
+        if (Boolean.TRUE.equals(u.getIsAdmin())) {
+            throw new BizException(ErrorCode.ADMIN_CANNOT_REVOKE_ORGANIZER,
+                    "该用户是系统管理员，无法撤销其组织者身份！");
+        }
         u.setIsOrganizer(false);
         userMapper.updateById(u);
         messageService.sendDirect(userId, MsgType.QUAL_AUDIT,
@@ -162,7 +175,8 @@ public class UserService {
         else if (Boolean.TRUE.equals(u.getIsAdmin())) prefix = "ADM";
         else if (Boolean.TRUE.equals(u.getIsOrganizer())) prefix = "ORG";
         else prefix = "VOL";
-        return prefix + "-" + String.format("%05d", u.getUserId());
+        // 使用 username（工号/学号）作为编号后缀
+        return prefix + "-" + u.getUsername();
     }
 
     private Map<Long, Long> countActivitiesByOrganizers(List<Long> organizerIds) {

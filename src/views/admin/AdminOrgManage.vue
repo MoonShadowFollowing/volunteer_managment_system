@@ -100,9 +100,19 @@ const remove = (row) => {
     { type: 'warning' }
   )
     .then(async () => {
-      await revokeOrganizer(row.userId)
-      ElMessage.success('移除成功，系统已通知该用户。')
-      await loadData()
+      try {
+        await revokeOrganizer(row.userId)
+        ElMessage.success('移除成功，系统已通知该用户。')
+        await loadData()
+      } catch (err) {
+        // 后端返回错误码 3003：管理员身份不可被撤销组织者资质
+        const msg = err?.response?.data?.message || err?.message || '移除失败'
+        if (msg.includes('系统管理员') || msg.includes('管理员身份')) {
+          ElMessage.error('该用户是系统管理员，无法撤销其组织者身份！')
+        } else {
+          ElMessage.error(msg)
+        }
+      }
     })
     .catch(() => {})
 }

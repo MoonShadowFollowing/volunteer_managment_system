@@ -164,12 +164,25 @@
       <p style="color: #666; margin-bottom: 20px;">
         提示：当修改为 0小时0分钟 时，该志愿者的证书将自动失效！
       </p>
+      <p style="color: #409eff; margin-bottom: 16px; font-size: 13px;">
+        活动总时长：{{ activityDuration.h }} 小时 {{ activityDuration.m }} 分钟
+      </p>
       <el-form label-width="80px">
         <el-form-item label="小时">
-          <el-input-number v-model="tempHours.h" :min="0" />
+          <el-input-number
+            v-model="tempHours.h"
+            :min="0"
+            :max="activityDuration.h"
+            @change="onHourChange"
+          />
         </el-form-item>
         <el-form-item label="分钟">
-          <el-input-number v-model="tempHours.m" :min="0" :max="59" />
+          <el-input-number
+            v-model="tempHours.m"
+            :min="0"
+            :max="59"
+            :disabled="tempHours.h >= activityDuration.h"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -179,19 +192,43 @@
     </el-dialog>
 
     <!-- 手动补签弹窗 -->
-    <el-dialog v-model="signDialogVisible" title="手动补签" width="460px">
-      <el-form label-width="90px">
+    <el-dialog v-model="signDialogVisible" title="手动补签" width="480px">
+      <el-form label-width="100px">
         <el-form-item label="签到时间">
-          <el-date-picker v-model="signForm.checkInTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+          <el-date-picker
+            v-model="signForm.checkInTime"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            style="width:100%"
+            @change="onSignTimeChange"
+          />
         </el-form-item>
         <el-form-item label="签退时间">
-          <el-date-picker v-model="signForm.checkOutTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+          <el-date-picker
+            v-model="signForm.checkOutTime"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            style="width:100%"
+            @change="onSignTimeChange"
+          />
         </el-form-item>
         <el-form-item label="志愿小时">
-          <el-input-number v-model="signForm.hours" :min="0" />
+          <el-input-number
+            v-model="signForm.hours"
+            :min="0"
+            @change="onHoursChange"
+          />
         </el-form-item>
         <el-form-item label="志愿分钟">
-          <el-input-number v-model="signForm.minutes" :min="0" :max="59" />
+          <el-input-number
+            v-model="signForm.minutes"
+            :min="0"
+            :max="59"
+            @change="onHoursChange"
+          />
+        </el-form-item>
+        <el-form-item v-if="signDurationHint" label=" ">
+          <span style="color: #909399; font-size: 13px;">{{ signDurationHint }}</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -297,16 +334,68 @@ const saving = ref(false)
 const hourDialogVisible = ref(false)
 const targetRecord = ref(null)
 const tempHours = ref({ h: 0, m: 0 })
+const activityDuration = ref({ h: 0, m: 0 })
+
+// 计算活动总时长
+const calcActivityDuration = () => {
+  const act = currentActivity.value
+  if (!act || !act.startTime || !act.endTime) {
+    activityDuration.value = { h: 0, m: 0 }
+    return
+  }
+  const start = new Date(act.startTime)
+  const end = new Date(act.endTime)
+  const diffMs = end.getTime() - start.getTime()
+  if (diffMs <= 0) {
+    activityDuration.value = { h: 0, m: 0 }
+    return
+  }
+  const totalMinutes = Math.floor(diffMs / 60000)
+  activityDuration.value = {
+    h: Math.floor(totalMinutes / 60),
+    m: totalMinutes % 60
+  }
+}
+
 const openHourDialog = (row) => {
   targetRecord.value = row
-  tempHours.value = { h: row.hours || 0, m: row.minutes || 0 }
+  // 计算活动总时长
+  calcActivityDuration()
+  // 当前工时不能超过活动总时长
+  const maxH = activityDuration.value.h
+  const maxM = activityDuration.value.m
+  let curH = row.hours || 0
+  let curM = row.minutes || 0
+  // 如果当前工时超过总时长，则自动限制到总时长
+  if (curH > maxH || (curH === maxH && curM > maxM)) {
+    curH = maxH
+    curM = maxM
+  }
+  tempHours.value = { h: curH, m: curM }
   hourDialogVisible.value = true
 }
+
+const onHourChange = (val) => {
+  // 如果小时达到最大，分钟自动归零
+  if (val >= activityDuration.value.h) {
+    tempHours.value.m = 0
+  }
+}
+
 const confirmHourChange = async () => {
+  const h = tempHours.value.h
+  const m = tempHours.value.m
+  // 校验：不能超过活动总时长
+  const maxH = activityDuration.value.h
+  const maxM = activityDuration.value.m
+  if (h > maxH || (h === maxH && m > maxM)) {
+    ElMessage.warning(`志愿时不能超过活动总时长（${maxH}小时${maxM}分钟）`)
+    return
+  }
   saving.value = true
   try {
-    await updateHours(targetRecord.value.recordId, { hours: tempHours.value.h, minutes: tempHours.value.m })
-    if (tempHours.value.h === 0 && tempHours.value.m === 0) {
+    await updateHours(targetRecord.value.recordId, { hours: h, minutes: m })
+    if (h === 0 && m === 0) {
       ElMessage.warning('工时已改为 0，该志愿者相关证书已自动失效！')
     } else {
       ElMessage.success('志愿时修改成功，证书已生效！')
@@ -321,20 +410,141 @@ const confirmHourChange = async () => {
 /* 手动补签 */
 const signDialogVisible = ref(false)
 const signForm = ref({ checkInTime: '', checkOutTime: '', hours: 0, minutes: 0 })
+const signDurationHint = ref('')
+const activityStartTime = ref('')
+const activityEndTime = ref('')
+
+// 将分钟转换为 HH:mm 格式的提示
+const formatDurationHint = (totalMinutes) => {
+  if (totalMinutes < 0) return '时长不能为负数'
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  return `⏱ 时长：${h} 小时 ${m} 分钟`
+}
+
+// 计算两个时间的差值（分钟）
+const calcDiffMinutes = (start, end) => {
+  if (!start || !end) return -1
+  const s = new Date(start)
+  const e = new Date(end)
+  if (e <= s) return -1
+  return Math.floor((e.getTime() - s.getTime()) / 60000)
+}
+
+// 从时长计算签退时间
+const calcCheckOutFromDuration = (checkIn, hours, minutes) => {
+  if (!checkIn) return ''
+  const d = new Date(checkIn)
+  d.setMinutes(d.getMinutes() + hours * 60 + minutes)
+  return d.toISOString().replace('T', ' ').slice(0, 19)
+}
+
+// 校验时间是否在活动范围内
+const isTimeWithinActivity = (time) => {
+  if (!time || !activityStartTime.value || !activityEndTime.value) return true
+  const t = new Date(time)
+  const s = new Date(activityStartTime.value)
+  const e = new Date(activityEndTime.value)
+  return t >= s && t <= e
+}
+
+// 时间变化 → 更新时长（仅：签到/签退时间 → 小时分钟）
+const onSignTimeChange = () => {
+  const ci = signForm.value.checkInTime
+  const co = signForm.value.checkOutTime
+
+  // 校验签到时间是否在活动范围内
+  if (ci && !isTimeWithinActivity(ci)) {
+    ElMessage.warning('签到时间不能超出活动时间范围，已自动调整')
+    signForm.value.checkInTime = activityStartTime.value
+    return
+  }
+
+  // 校验签退时间是否在活动范围内
+  if (co && !isTimeWithinActivity(co)) {
+    ElMessage.warning('签退时间不能超出活动时间范围，已自动调整')
+    signForm.value.checkOutTime = activityEndTime.value
+    return
+  }
+
+  // 计算时长并更新小时/分钟（核心逻辑）
+  const diff = calcDiffMinutes(ci, co)
+  if (diff >= 0) {
+    signForm.value.hours = Math.floor(diff / 60)
+    signForm.value.minutes = diff % 60
+    signDurationHint.value = formatDurationHint(diff)
+  } else if (ci && co) {
+    ElMessage.warning('签退时间必须晚于签到时间')
+    signDurationHint.value = '⚠️ 签退时间必须晚于签到时间'
+  } else {
+    signDurationHint.value = ''
+  }
+}
+
+// 时长变化 → 仅校验是否超出活动总时长，不修改签到/签退时间
+const onHoursChange = () => {
+  const h = signForm.value.hours || 0
+  const m = signForm.value.minutes || 0
+  const totalMinutes = h * 60 + m
+
+  // 计算活动总时长
+  const actStart = new Date(activityStartTime.value)
+  const actEnd = new Date(activityEndTime.value)
+  if (isNaN(actStart.getTime()) || isNaN(actEnd.getTime())) return
+  const activityMinutes = Math.floor((actEnd.getTime() - actStart.getTime()) / 60000)
+
+  if (totalMinutes > activityMinutes) {
+    ElMessage.warning(`志愿时不能超过活动总时长（${Math.floor(activityMinutes/60)}小时${activityMinutes%60}分钟）`)
+    // 自动截断到最大可用时长
+    signForm.value.hours = Math.floor(activityMinutes / 60)
+    signForm.value.minutes = activityMinutes % 60
+    signDurationHint.value = formatDurationHint(activityMinutes)
+    return
+  }
+
+  // 更新时长提示
+  if (totalMinutes >= 0) {
+    signDurationHint.value = formatDurationHint(totalMinutes)
+  }
+}
+
 const openSignDialog = (row) => {
   targetRecord.value = row
+  // 保存活动时间边界
+  activityStartTime.value = currentActivity.value.startTime || ''
+  activityEndTime.value = currentActivity.value.endTime || ''
+  // 初始化签到时间为活动开始时间
   signForm.value = {
     checkInTime: currentActivity.value.startTime || '',
     checkOutTime: currentActivity.value.endTime || '',
     hours: 0,
     minutes: 0
   }
+  signDurationHint.value = ''
+  // 自动计算初始时长
+  onSignTimeChange()
   signDialogVisible.value = true
 }
+
 const confirmSign = async () => {
   const f = signForm.value
   if (!f.checkInTime || !f.checkOutTime) return ElMessage.warning('请选择签到和签退时间')
   if (f.checkOutTime <= f.checkInTime) return ElMessage.warning('签退时间必须晚于签到时间')
+  // 校验时间不能超出活动范围
+  if (!isTimeWithinActivity(f.checkInTime)) {
+    return ElMessage.warning('签到时间不能超出活动时间范围')
+  }
+  if (!isTimeWithinActivity(f.checkOutTime)) {
+    return ElMessage.warning('签退时间不能超出活动时间范围')
+  }
+  // 校验工时不能超过活动总时长
+  const totalMinutes = f.hours * 60 + f.minutes
+  const actStart = new Date(activityStartTime.value)
+  const actEnd = new Date(activityEndTime.value)
+  const activityMinutes = Math.floor((actEnd.getTime() - actStart.getTime()) / 60000)
+  if (totalMinutes > activityMinutes) {
+    return ElMessage.warning(`志愿时不能超过活动总时长（${Math.floor(activityMinutes/60)}小时${activityMinutes%60}分钟）`)
+  }
   saving.value = true
   try {
     await manualSign(targetRecord.value.recordId, {

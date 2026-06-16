@@ -156,14 +156,14 @@
 
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitForm">提交审核</el-button>
+        <el-button type="primary" :loading="submitting" :disabled="dialogType === 'edit' &amp;&amp; !isFormModified" @click="submitForm">提交审核</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   listActivities,
@@ -198,6 +198,29 @@ const form = ref({
   location: '',
   limitNum: 10,
   desc: ''
+})
+
+// 存储原始数据用于检测是否修改
+const originalForm = ref({
+  name: '',
+  startTime: '',
+  endTime: '',
+  location: '',
+  limitNum: 10,
+  desc: ''
+})
+
+// 检测表单是否被修改（仅用于编辑模式）
+const isFormModified = computed(() => {
+  if (dialogType.value !== 'edit') return true // 新增模式始终可提交
+  const f = form.value
+  const o = originalForm.value
+  return f.name !== o.name ||
+         f.startTime !== o.startTime ||
+         f.endTime !== o.endTime ||
+         f.location !== o.location ||
+         f.limitNum !== o.limitNum ||
+         f.desc !== o.desc
 })
 
 const loadData = async () => {
@@ -251,8 +274,18 @@ const openDialog = (type, row = null) => {
       location: row.location,
       desc: row.desc
     }
+    // 保存原始数据用于检测是否修改
+    originalForm.value = {
+      name: row.name,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      location: row.location,
+      limitNum: Number(row.limitNum) || 10,
+      desc: row.desc
+    }
   } else {
     form.value = { activityId: null, name: '', limitNum: 10, startTime: '', endTime: '', location: '', desc: '' }
+    originalForm.value = { name: '', startTime: '', endTime: '', location: '', limitNum: 10, desc: '' }
   }
   dialogVisible.value = true
 }

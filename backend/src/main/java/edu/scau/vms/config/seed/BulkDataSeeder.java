@@ -94,16 +94,22 @@ public class BulkDataSeeder implements ApplicationRunner {
 
         List<Integer> orgIds = seedOrganizers();
         List<Integer> volIds = seedVolunteers();
+        // 额外生成 30 条 8 位学号（username 长度为 8）的志愿者，供超管添加管理员
+        List<Integer> shortUsernameVolIds = seedShortUsernameVolunteers();
+        // 将短学号志愿者合并到 volIds 中，供后续活动报名等业务使用
+        List<Integer> allVolIds = new ArrayList<>(volIds);
+        allVolIds.addAll(shortUsernameVolIds);
         List<ActivityRow> activities = seedActivities(orgIds);
-        int regs = seedRegistrations(activities, volIds);
+        int regs = seedRegistrations(activities, allVolIds);
         int atts = seedAttendance();
         int certs = seedCertificates();
-        int msgs = seedMessages(volIds, orgIds);
-        int apps = seedApplications(volIds, orgIds);
+        int msgs = seedMessages(allVolIds, orgIds);
+        int apps = seedApplications(allVolIds, orgIds);
 
-        log.info("[BulkDataSeeder] 完成 耗时 {} ms。汇总：org+{} vol+{} act+{} reg+{} att+{} cert+{} msg+{} app+{}",
+        log.info("[BulkDataSeeder] 完成 耗时 {} ms。汇总：org+{} vol+{} (含8位学号 {} 条) act+{} reg+{} att+{} cert+{} msg+{} app+{}",
                 System.currentTimeMillis() - t0,
-                orgIds.size(), volIds.size(), activities.size(), regs, atts, certs, msgs, apps);
+                orgIds.size(), allVolIds.size(), shortUsernameVolIds.size(),
+                activities.size(), regs, atts, certs, msgs, apps);
     }
 
     // ---------- users ----------
@@ -147,6 +153,40 @@ public class BulkDataSeeder implements ApplicationRunner {
         return jdbc.queryForList(
                 "SELECT user_id FROM users WHERE username LIKE ? ORDER BY user_id",
                 Integer.class, "20240004%");
+    }
+
+    /**
+     * 生成 30 条 username 为 8 位数字的志愿者（学号/工号格式）
+     * 用于超管添加管理员时的候选用户
+     * username 范围：20240101 ~ 20240130，均为 8 位
+     */
+    private List<Integer> seedShortUsernameVolunteers() {
+        // 检查是否已存在，避免重复插入
+        Integer existing = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE username BETWEEN '20240101' AND '20240130'",
+                Integer.class);
+        if (existing != null && existing > 0) {
+            log.info("[BulkDataSeeder] 8位学号志愿者已存在 {} 条，跳过生成。", existing);
+            return jdbc.queryForList(
+                    "SELECT user_id FROM users WHERE username BETWEEN '20240101' AND '20240130' ORDER BY user_id",
+                    Integer.class);
+        }
+
+        List<Object[]> batch = new ArrayList<>();
+        for (int i = 1; i <= 30; i++) {
+            // 生成 20240101 ~ 20240130
+            String username = String.format("202401%02d", i);
+            String name = randomName();
+            String phone = randomPhone();
+            batch.add(new Object[]{username, BCRYPT_123456, name, Role.VOLUNTEER, phone, 0, 0});
+        }
+        jdbc.batchUpdate(
+                "INSERT IGNORE INTO users (username,password,name,role,phone,is_organizer,is_admin) VALUES (?,?,?,?,?,?,?)",
+                batch);
+        log.info("[BulkDataSeeder] 成功生成 {} 条 8 位学号志愿者", batch.size());
+        return jdbc.queryForList(
+                "SELECT user_id FROM users WHERE username BETWEEN '20240101' AND '20240130' ORDER BY user_id",
+                Integer.class);
     }
 
     // ---------- activities ----------

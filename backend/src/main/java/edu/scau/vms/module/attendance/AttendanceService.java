@@ -62,6 +62,21 @@ public class AttendanceService {
         if (!isAdmin && (a == null || !a.getOrganizerId().equals(currentUserId))) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权修改他人活动志愿时");
         }
+        // 校验工时不能为负数
+        if (req.getHours() < 0 || req.getMinutes() < 0) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "工时不能为负数");
+        }
+        if (req.getMinutes() > 59) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "分钟数不能超过 59");
+        }
+        // 校验工时不能超过活动总时长
+        long totalMinutes = req.getHours() * 60L + req.getMinutes();
+        long activityMinutes = java.time.Duration.between(a.getStartTime(), a.getEndTime()).toMinutes();
+        if (totalMinutes > activityMinutes) {
+            throw new BizException(ErrorCode.PARAM_INVALID,
+                    String.format("志愿时不能超过活动总时长（%d小时%d分钟）",
+                            activityMinutes / 60, activityMinutes % 60));
+        }
         att.setServiceHours(req.getHours());
         att.setServiceMinutes(req.getMinutes());
         attendanceMapper.updateById(att);
@@ -109,6 +124,14 @@ public class AttendanceService {
         Activity a = activityMapper.selectById(att.getActivityId());
         if (!isAdmin && (a == null || !a.getOrganizerId().equals(currentUserId))) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权操作他人活动签到");
+        }
+        // 校验工时不能超过活动总时长
+        long totalMinutes = req.getHours() * 60L + req.getMinutes();
+        long activityMinutes = java.time.Duration.between(a.getStartTime(), a.getEndTime()).toMinutes();
+        if (totalMinutes > activityMinutes) {
+            throw new BizException(ErrorCode.PARAM_INVALID,
+                    String.format("志愿时不能超过活动总时长（%d小时%d分钟）",
+                            activityMinutes / 60, activityMinutes % 60));
         }
         att.setCheckInTime(req.getCheckInTime());
         att.setCheckOutTime(req.getCheckOutTime());

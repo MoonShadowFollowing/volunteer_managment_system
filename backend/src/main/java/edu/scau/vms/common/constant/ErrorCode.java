@@ -23,6 +23,7 @@ public final class ErrorCode {
     public static final int BIZ_CONFLICT = 3000;
     public static final int ACTIVITY_NOT_AUDITED = 3001;
     public static final int CERT_INVALID = 3002;
+    public static final int ADMIN_CANNOT_REVOKE_ORGANIZER = 3003;
 
     public static final int PARAM_INVALID = 4000;
 }

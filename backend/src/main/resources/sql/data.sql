@@ -8,8 +8,8 @@
 -- ---------- 1) users (1 超管 + 2 管理员 + 3 组织者 + 10 志愿者) ----------
 INSERT IGNORE INTO users (user_id, username, password, name, role, phone, is_organizer, is_admin, created_at) VALUES
   (1, '00000000',   '$2a$10$H7Mbq2486I0yeclMuoEhqubHwydIVT666w8.oXacS8TOjsh7V3cva', '超级管理员', 'superadmin', NULL,           0, 0, '2024-09-01 10:00:00'),
-  (2, '12345678',   '$2a$10$H7Mbq2486I0yeclMuoEhqubHwydIVT666w8.oXacS8TOjsh7V3cva', '赵主管',     'admin',      '13800000002', 0, 1, '2024-09-01 10:00:00'),
-  (3, '48271936',   '$2a$10$H7Mbq2486I0yeclMuoEhqubHwydIVT666w8.oXacS8TOjsh7V3cva', '钱干事',     'admin',      '13800000003', 0, 1, '2024-09-01 10:00:00'),
+  (2, '12345678',   '$2a$10$H7Mbq2486I0yeclMuoEhqubHwydIVT666w8.oXacS8TOjsh7V3cva', '赵主管',     'admin',      '13800000002', 1, 1, '2024-09-01 10:00:00'),
+  (3, '48271936',   '$2a$10$H7Mbq2486I0yeclMuoEhqubHwydIVT666w8.oXacS8TOjsh7V3cva', '钱干事',     'admin',      '13800000003', 1, 1, '2024-09-01 10:00:00'),
   (4, '202400010101','$2a$10$H7Mbq2486I0yeclMuoEhqubHwydIVT666w8.oXacS8TOjsh7V3cva', '李四',       'volunteer',  '13800000004', 1, 0, '2024-09-01 10:00:00'),
   (5, '202411110101','$2a$10$H7Mbq2486I0yeclMuoEhqubHwydIVT666w8.oXacS8TOjsh7V3cva', '王小明',     'volunteer',  '13800000005', 1, 0, '2024-09-01 10:00:00'),
   (6, '202422220201','$2a$10$H7Mbq2486I0yeclMuoEhqubHwydIVT666w8.oXacS8TOjsh7V3cva', '孙七',       'volunteer',  '13800000006', 1, 0, '2024-09-01 10:00:00'),
