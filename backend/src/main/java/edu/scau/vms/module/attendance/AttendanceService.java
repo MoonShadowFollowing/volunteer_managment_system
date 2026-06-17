@@ -198,7 +198,7 @@ public class AttendanceService {
                     .actNo(a == null ? null : a.getStartTime().format(ACT_NO_FMT) + String.format("%04d", a.getActivityId()))
                     .activityName(a == null ? null : a.getTitle())
                     .volunteerId(att.getVolunteerId())
-                    .volId(RegistrationService.formatVolId(att.getVolunteerId()))
+                    .volId(u == null ? null : userService.formatUserNo(u))
                     .volName(u == null ? null : u.getName())
                     .checkInTime(att.getCheckInTime())
                     .checkOutTime(att.getCheckOutTime())

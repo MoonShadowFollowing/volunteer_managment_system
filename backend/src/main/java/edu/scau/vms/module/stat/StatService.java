@@ -38,14 +38,13 @@ public class StatService {
     public DashboardStats forUser(UserPrincipal me) {
         String role = me.role();
         Map<String, Object> m = new LinkedHashMap<>();
-        if (Role.VOLUNTEER.equals(role) && !me.organizer()) {
-            volunteerMetrics(me.userId(), m);
-        } else if (me.organizer()) {
-            organizerMetrics(me.userId(), m);
+        // 管理员 ⊇ 组织者 ⊇ 志愿者（递进关系），必须按高权限优先判断
+        if (Role.SUPERADMIN.equals(role)) {
+            superMetrics(m);
         } else if (Role.ADMIN.equals(role) || me.admin()) {
             adminMetrics(m);
-        } else if (Role.SUPERADMIN.equals(role)) {
-            superMetrics(m);
+        } else if (me.organizer()) {
+            organizerMetrics(me.userId(), m);
         } else {
             volunteerMetrics(me.userId(), m);
         }

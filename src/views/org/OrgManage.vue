@@ -301,7 +301,14 @@ const loadRegs = async () => {
   regLoading.value = true
   try {
     const res = await listRegistrations({ activityId: currentActivity.value.activityId, page: 1, pageSize: 500 })
-    volunteers.value = res.rows || []
+    const rows = res.rows || []
+    // 按审核状态排序：待审核排到最前面
+    rows.sort((a, b) => {
+      if (a.auditStatus === '待审核' && b.auditStatus !== '待审核') return -1
+      if (a.auditStatus !== '待审核' && b.auditStatus === '待审核') return 1
+      return 0
+    })
+    volunteers.value = rows
   } finally {
     regLoading.value = false
   }

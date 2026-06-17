@@ -27,8 +27,8 @@
             {{ (page - 1) * pageSize + scope.$index + 1 }}
           </template>
         </el-table-column>
-        <el-table-column prop="applicantNo" label="申请人编号" width="120" align="center" />
-        <el-table-column prop="applicantName" label="申请人姓名" />
+        <el-table-column prop="applicantNo" label="申请人编号" width="200" align="center" />
+        <el-table-column prop="applicantName" label="申请人姓名" align="center" />
         <el-table-column prop="submittedAt" label="申请时间" width="180" align="center" />
         <el-table-column prop="auditStatus" label="状态" width="100" align="center">
           <template #default="scope">

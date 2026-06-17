@@ -169,7 +169,7 @@ public class UserService {
                 .build();
     }
 
-    private String formatUserNo(User u) {
+    public String formatUserNo(User u) {
         String prefix;
         if (Role.SUPERADMIN.equals(u.getRole())) prefix = "SUP";
         else if (Boolean.TRUE.equals(u.getIsAdmin())) prefix = "ADM";

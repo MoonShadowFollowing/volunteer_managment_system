@@ -206,7 +206,7 @@ public class RegistrationService {
                     .limitNum(a == null ? null : a.getCapacity())
                     .enrolledNum(enrolled.getOrDefault(r.getActivityId(), 0L).intValue())
                     .volunteerId(r.getVolunteerId())
-                    .volId(formatVolId(r.getVolunteerId()))
+                    .volId(u == null ? null : userService.formatUserNo(u))
                     .volName(u == null ? null : u.getName())
                     .auditStatus(r.getAuditStatus())
                     .appliedAt(r.getAppliedAt())

@@ -24,9 +24,9 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="userNo" label="组织者编号" width="140" align="center" />
+        <el-table-column prop="userNo" label="组织者编号" width="200" align="center" />
 
-        <el-table-column prop="name" label="组织者姓名" />
+        <el-table-column prop="name" label="组织者姓名" align="center" />
 
         <el-table-column prop="actCount" label="已发活动数" align="center" />
 
