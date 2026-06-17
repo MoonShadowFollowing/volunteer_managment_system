@@ -73,7 +73,16 @@ import { uploadAction, uploadHeaders, resolveFileUrl } from '../../api/file'
 import { submitApplication, myApplications } from '../../api/organizer'
 
 const userName = ref(localStorage.getItem('userName') || '')
-const volNo = 'VOL-' + String(localStorage.getItem('userId') || 0).padStart(5, '0')
+const formatUserNo = () => {
+  const role = localStorage.getItem('userRole') || 'volunteer'
+  const username = localStorage.getItem('userUsername') || ''
+  const prefix =
+    role === 'superadmin' ? 'SUP' :
+    role === 'admin' ? 'ADM' :
+    role === 'organizer' ? 'ORG' : 'VOL'
+  return prefix + '-' + username
+}
+const volNo = formatUserNo()
 
 const reason = ref('')
 const materialUrl = ref('')

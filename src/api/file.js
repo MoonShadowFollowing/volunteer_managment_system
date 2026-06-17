@@ -1,6 +1,6 @@
 import http from './index'
 
-const BASE = process.env.VUE_APP_API_BASE || 'http://localhost:8080/api'
+const BASE = process.env.VUE_APP_API_BASE || 'http://localhost:8081/api'
 
 // ElUpload 直传用：action 地址 + 带 JWT 的请求头
 export const uploadAction = `${BASE}/files/upload`

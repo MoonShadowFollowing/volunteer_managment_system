@@ -161,7 +161,14 @@ const loadData = async () => {
       page: page.value,
       pageSize: pageSize.value
     })
-    list.value = res.rows || []
+    const rows = res.rows || []
+    // 报名人数不可超过招募人数，超出则截断
+    rows.forEach(row => {
+      if (row.limitNum != null && row.enrolledNum > row.limitNum) {
+        row.enrolledNum = row.limitNum
+      }
+    })
+    list.value = rows
     total.value = res.total || 0
   } catch (e) {
     /* 拦截器已提示 */
