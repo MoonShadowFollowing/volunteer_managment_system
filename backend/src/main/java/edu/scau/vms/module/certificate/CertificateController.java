@@ -9,6 +9,7 @@ import edu.scau.vms.common.security.UserPrincipal;
 import edu.scau.vms.module.certificate.dto.CertificateVO;
 import edu.scau.vms.module.user.entity.User;
 import edu.scau.vms.module.user.mapper.UserMapper;
+import edu.scau.vms.module.user.UserService;
 import edu.scau.vms.util.PdfGenerator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +37,7 @@ public class CertificateController {
     private final CertificateService certificateService;
     private final PdfGenerator pdfGenerator;
     private final UserMapper userMapper;
+    private final UserService userService;
 
     @Operation(summary = "我的证书")
     @GetMapping("/mine")
@@ -58,7 +60,7 @@ public class CertificateController {
         }
         User user = userMapper.selectById(me.userId());
         String volunteerName = user == null ? "" : user.getName();
-        String volunteerNo = "VOL-" + String.format("%05d", me.userId());
+        String volunteerNo = user == null ? "" : userService.formatUserNo(user);
 
         byte[] pdf = pdfGenerator.generateCertificate(vo, volunteerName, volunteerNo);
         ByteArrayResource resource = new ByteArrayResource(pdf);
