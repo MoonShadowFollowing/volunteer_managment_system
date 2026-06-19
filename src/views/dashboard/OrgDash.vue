@@ -31,6 +31,8 @@ onMounted(async () => {
   try {
     const res = await dashboard()
     m.value = res.metrics || {}
+  } catch (_) {
+    // 401 等错误已由拦截器统一处理
   } finally {
     loading.value = false
   }
