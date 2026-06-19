@@ -46,10 +46,7 @@ public class UserService {
           // 仅允许 username 长度为 8 位的用户被提升为管理员（学号/工号格式）
           .apply("LENGTH(username) = 8");
         if (name != null && !name.isBlank()) qw.like(User::getName, name);
-        if (userNo != null && !userNo.isBlank()) {
-            String numeric = userNo.replaceAll("[^0-9]", "");
-            if (!numeric.isBlank()) qw.like(User::getUserId, numeric);
-        }
+        if (userNo != null && !userNo.isBlank()) qw.like(User::getUsername, stripPrefix(userNo));
         qw.orderByAsc(User::getUserId);
         Page<User> p = new Page<>(page == null ? 1 : page, size == null ? 10 : size);
         Page<User> result = userMapper.selectPage(p, qw);
@@ -61,10 +58,7 @@ public class UserService {
         qw.eq(User::getIsAdmin, true)
           .ne(User::getRole, Role.SUPERADMIN);
         if (name != null && !name.isBlank()) qw.like(User::getName, name);
-        if (userNo != null && !userNo.isBlank()) {
-            String numeric = userNo.replaceAll("[^0-9]", "");
-            if (!numeric.isBlank()) qw.like(User::getUserId, numeric);
-        }
+        if (userNo != null && !userNo.isBlank()) qw.like(User::getUsername, stripPrefix(userNo));
         qw.orderByAsc(User::getUserId);
         Page<User> p = new Page<>(page == null ? 1 : page, size == null ? 10 : size);
         Page<User> result = userMapper.selectPage(p, qw);
@@ -77,10 +71,7 @@ public class UserService {
         qw.eq(User::getIsOrganizer, true)
           .ne(User::getRole, Role.SUPERADMIN);
         if (name != null && !name.isBlank()) qw.like(User::getName, name);
-        if (userNo != null && !userNo.isBlank()) {
-            String numeric = userNo.replaceAll("[^0-9]", "");
-            if (!numeric.isBlank()) qw.like(User::getUserId, numeric);
-        }
+        if (userNo != null && !userNo.isBlank()) qw.like(User::getUsername, stripPrefix(userNo));
         qw.orderByAsc(User::getUserId);
         Page<User> p = new Page<>(page == null ? 1 : page, size == null ? 10 : size);
         Page<User> result = userMapper.selectPage(p, qw);
@@ -89,6 +80,8 @@ public class UserService {
         List<Long> uids = vos.stream().map(UserSummaryVO::getUserId).toList();
         Map<Long, Long> actCountMap = countActivitiesByOrganizers(uids);
         vos.forEach(v -> v.setActCount(actCountMap.getOrDefault(v.getUserId(), 0L)));
+        // 组织者管理页面编号固定 ORG- 前缀
+        vos.forEach(v -> v.setUserNo("ORG-" + v.getUsername()));
         return PageResult.of(result.getTotal(), vos);
     }
 
@@ -180,6 +173,11 @@ public class UserService {
         else prefix = "VOL";
         // 使用 username（工号/学号）作为编号后缀
         return prefix + "-" + u.getUsername();
+    }
+
+    /** 用户输入 "ADM-12345678" 时去掉前缀 ADM-/ORG-/VOL-/SUP- */
+    private String stripPrefix(String s) {
+        return s.replaceFirst("^(SUP|ADM|ORG|VOL)-", "");
     }
 
     private Map<Long, Long> countActivitiesByOrganizers(List<Long> organizerIds) {

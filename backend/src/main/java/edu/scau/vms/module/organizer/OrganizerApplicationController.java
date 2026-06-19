@@ -47,8 +47,10 @@ public class OrganizerApplicationController {
     public Result<PageResult<ApplicationVO>> list(
             @RequestParam(required = false, defaultValue = "1") Long page,
             @RequestParam(required = false, defaultValue = "10") Long pageSize,
-            @RequestParam(required = false) String status) {
-        return Result.ok(service.list(page, pageSize, status));
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String userNo) {
+        return Result.ok(service.list(page, pageSize, status, name, userNo));
     }
 
     @Operation(summary = "审核组织者申请（通过/拒绝）")

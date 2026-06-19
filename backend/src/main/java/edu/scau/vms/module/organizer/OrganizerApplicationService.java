@@ -57,10 +57,16 @@ public class OrganizerApplicationService {
         return app.getAppId();
     }
 
-    public PageResult<ApplicationVO> list(Long page, Long size, String status) {
+    public PageResult<ApplicationVO> list(Long page, Long size, String status, String name, String userNo) {
         LambdaQueryWrapper<OrganizerApplication> qw = new LambdaQueryWrapper<>();
         if (status != null && !status.isBlank()) qw.eq(OrganizerApplication::getAuditStatus, status);
-        qw.orderByAsc(OrganizerApplication::getAuditStatus)   // 待审核排前
+        if (name != null && !name.isBlank() || userNo != null && !userNo.isBlank()) {
+            qw.inSql(OrganizerApplication::getApplicantId,
+                    "SELECT user_id FROM users WHERE 1=1"
+                    + (name != null && !name.isBlank() ? " AND name LIKE '%" + name + "%'" : "")
+                    + (userNo != null && !userNo.isBlank() ? " AND username LIKE '%" + userNo.replaceFirst("^(SUP|ADM|ORG|VOL)-", "") + "%'" : ""));
+        }
+        qw.orderByAsc(OrganizerApplication::getAuditStatus)
           .orderByDesc(OrganizerApplication::getSubmittedAt);
         Page<OrganizerApplication> p = new Page<>(page == null ? 1 : page, size == null ? 10 : size);
         Page<OrganizerApplication> result = appMapper.selectPage(p, qw);

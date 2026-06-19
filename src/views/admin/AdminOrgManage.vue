@@ -4,6 +4,9 @@
     <!-- 查询 -->
     <el-card class="mb-20">
       <el-form :inline="true">
+        <el-form-item label="组织者编号">
+          <el-input v-model="queryId" placeholder="模糊查询编号" clearable />
+        </el-form-item>
         <el-form-item label="组织者姓名">
           <el-input v-model="queryName" placeholder="模糊查询姓名" clearable />
         </el-form-item>
@@ -66,6 +69,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { listOrganizers, revokeOrganizer } from '../../api/organizer'
 
 const queryName = ref('')
+const queryId = ref('')
 const page = ref(1)
 const pageSize = ref(5)
 const total = ref(0)
@@ -77,6 +81,7 @@ const loadData = async () => {
   try {
     const res = await listOrganizers({
       name: queryName.value || undefined,
+      userNo: queryId.value || undefined,
       page: page.value,
       pageSize: pageSize.value
     })
@@ -89,7 +94,7 @@ const loadData = async () => {
 onMounted(loadData)
 
 const handleSearch = () => { page.value = 1; loadData() }
-const handleReset = () => { queryName.value = ''; page.value = 1; loadData() }
+const handleReset = () => { queryName.value = ''; queryId.value = ''; page.value = 1; loadData() }
 const handleSizeChange = (v) => { pageSize.value = v; page.value = 1; loadData() }
 const handleCurrentChange = (v) => { page.value = v; loadData() }
 

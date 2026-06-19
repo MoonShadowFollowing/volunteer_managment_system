@@ -2,8 +2,11 @@
   <div class="app-container">
     <el-card class="mb-20">
       <el-form :inline="true">
-        <el-form-item label="申请人">
-          <el-input v-model="queryName" placeholder="姓名查询" clearable />
+        <el-form-item label="申请人编号">
+          <el-input v-model="queryId" placeholder="模糊查询编号" clearable />
+        </el-form-item>
+        <el-form-item label="申请人姓名">
+          <el-input v-model="queryName" placeholder="模糊查询姓名" clearable />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryStatus" style="width: 140px" @change="loadData">
@@ -21,7 +24,7 @@
     </el-card>
 
     <el-card>
-      <el-table :data="pagedList" border v-loading="loading">
+      <el-table :data="list" border v-loading="loading">
         <el-table-column label="编号" width="80" align="center">
           <template #default="scope">
             {{ (page - 1) * pageSize + scope.$index + 1 }}
@@ -47,14 +50,16 @@
       </el-table>
 
       <div class="pagination-wrap">
-        <div class="page-size-tip">共 {{ filteredList.length }} 条</div>
+        <div class="page-size-tip">共 {{ total }} 条</div>
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="pageSize"
           :page-sizes="[5, 10, 20, 50]"
-          :total="filteredList.length"
+          :total="total"
           layout="total, sizes, prev, pager, next, jumper"
           background
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
         />
       </div>
     </el-card>
@@ -87,15 +92,17 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listApplications, auditApplication } from '../../api/organizer'
 import { resolveFileUrl } from '../../api/file'
 
 const queryName = ref('')
+const queryId = ref('')
 const queryStatus = ref('待审核')
 const page = ref(1)
 const pageSize = ref(5)
+const total = ref(0)
 const dialogVisible = ref(false)
 const currentApply = ref({})
 const list = ref([])
@@ -104,9 +111,15 @@ const loading = ref(false)
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await listApplications({ status: queryStatus.value || undefined, page: 1, pageSize: 200 })
+    const res = await listApplications({
+      status: queryStatus.value || undefined,
+      name: queryName.value || undefined,
+      userNo: queryId.value || undefined,
+      page: page.value,
+      pageSize: pageSize.value
+    })
     list.value = res.rows || []
-    page.value = 1
+    total.value = res.total || 0
   } catch (_) { /* 403 拦截器已处理 */ } finally {
     loading.value = false
   }
@@ -114,15 +127,6 @@ const loadData = async () => {
 onMounted(loadData)
 
 const isImage = (url) => /\.(jpg|jpeg|png|gif|webp)$/i.test(url || '')
-
-const filteredList = computed(() => {
-  return list.value.filter(item => !queryName.value || (item.applicantName || '').includes(queryName.value))
-})
-
-const pagedList = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return filteredList.value.slice(start, start + pageSize.value)
-})
 
 const viewMaterial = (row) => {
   currentApply.value = row
@@ -140,8 +144,10 @@ const handleAudit = (row, approve) => {
   }).catch(() => {})
 }
 
-const handleSearch = () => { page.value = 1 }
-const handleReset = () => { queryName.value = ''; queryStatus.value = '待审核'; loadData() }
+const handleSearch = () => { page.value = 1; loadData() }
+const handleReset = () => { queryName.value = ''; queryId.value = ''; queryStatus.value = '待审核'; loadData() }
+const handleSizeChange = (v) => { pageSize.value = v; page.value = 1; loadData() }
+const handleCurrentChange = (v) => { page.value = v; loadData() }
 </script>
 
 <style scoped>
