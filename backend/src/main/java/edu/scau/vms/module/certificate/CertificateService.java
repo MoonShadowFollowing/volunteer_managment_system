@@ -66,8 +66,10 @@ public class CertificateService {
         }
         return list.stream().map(c -> {
             Activity a = actMap.get(c.getActivityId());
+            String actNo = a == null ? null : a.getStartTime().format(ACT_NO_FMT) + String.format("%04d", a.getActivityId());
             return CertificateVO.builder()
                     .certId(c.getCertId())
+                    .certNo("CERT-" + (actNo == null ? "UNKNOWN" : actNo) + "-" + String.format("%05d", c.getCertId()))
                     .certName(c.getTitle())
                     .activityId(c.getActivityId())
                     .actNo(a == null ? null : a.getStartTime().format(ACT_NO_FMT) + String.format("%04d", a.getActivityId()))

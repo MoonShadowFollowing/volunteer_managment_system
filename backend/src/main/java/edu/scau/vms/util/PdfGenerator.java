@@ -134,25 +134,28 @@ public class PdfGenerator {
             hoursBox.addCell(hoursCell);
             doc.add(hoursBox);
 
-            doc.add(new Paragraph(" ").setMarginBottom(40));
+            doc.add(new Paragraph(" ").setMarginBottom(25));
 
             // 落款
             String issuedDate = vo.getIssuedDate() == null ? "" : vo.getIssuedDate().format(DATE_FMT);
             doc.add(new Paragraph("特此证明。")
                     .setFont(font).setFontSize(13)
                     .setTextAlignment(TextAlignment.LEFT)
-                    .setMarginTop(20).setMarginBottom(40));
+                    .setMarginTop(20).setMarginBottom(25));
 
-            Table signTable = new Table(UnitValue.createPercentArray(new float[]{1, 1}))
+            // 发证单位 + 日期，各一行居右
+            Table signTable = new Table(UnitValue.createPercentArray(new float[]{1}))
                     .setWidth(UnitValue.createPercentValue(100));
-            signTable.addCell(noBorder(new Paragraph(" ").setFont(font)));
-            signTable.addCell(noBorder(new Paragraph("发证单位：志愿服务工时认证与活动管理系统\n发证日期：" + issuedDate)
+            signTable.addCell(noBorder(new Paragraph("发证单位：志愿服务工时认证与活动管理系统")
+                    .setFont(font).setFontSize(12)
+                    .setTextAlignment(TextAlignment.RIGHT)));
+            signTable.addCell(noBorder(new Paragraph("\n发证日期：" + issuedDate)
                     .setFont(font).setFontSize(12)
                     .setTextAlignment(TextAlignment.RIGHT)));
             doc.add(signTable);
 
             // 底部水印备注
-            doc.add(new Paragraph(" ").setMarginTop(80));
+            doc.add(new Paragraph(" ").setMarginTop(70));
             doc.add(new LineSeparator(new SolidLine(0.5f)).setMarginBottom(4));
             doc.add(new Paragraph("本证书由系统自动生成，可通过证书编号在系统内查验真伪。")
                     .setFont(font).setFontSize(8)

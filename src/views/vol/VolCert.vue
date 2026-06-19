@@ -26,21 +26,21 @@
     <el-card>
       <el-table :data="pagedCertList" border v-loading="loading">
 
-        <el-table-column label="编号" width="60" align="center">
+        <el-table-column label="编号" width="55" align="center">
           <template #default="scope">
             {{ (page - 1) * pageSize + scope.$index + 1 }}
           </template>
         </el-table-column>
 
-        <el-table-column prop="certId" label="证书编号" min-width="120" align="center" />
+        <el-table-column prop="certNo" label="证书编号" min-width="205" align="center" />
         <el-table-column prop="certName" label="证书标题" min-width="180" />
-        <el-table-column prop="activityName" label="对应活动" min-width="160" />
-        <el-table-column prop="actNo" label="对应活动编号" width="140" align="center" />
+        <el-table-column prop="activityName" label="对应活动" min-width="170" />
+        <el-table-column prop="actNo" label="对应活动编号" width="120" align="center" />
 
-        <el-table-column prop="startTime" label="开始时间" width="180" align="center"/>
-        <el-table-column prop="endTime" label="结束时间" width="180" align="center"/>
+        <el-table-column prop="startTime" label="开始时间" width="170" align="center"/>
+        <el-table-column prop="endTime" label="结束时间" width="170" align="center"/>
 
-        <el-table-column label="认证工时" width="130" align="center">
+        <el-table-column label="认证工时" width="120" align="center">
           <template #default="scope">
             <strong style="color: #e63946">
               {{ scope.row.hours }} 小时 {{ scope.row.minutes }} 分钟
@@ -56,7 +56,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="130" align="center">
+        <el-table-column label="操作" width="100" align="center">
           <template #default="scope">
             <el-button
               size="small"
@@ -131,9 +131,23 @@ const handleSearch = () => { page.value = 1 }
 const handleReset = () => { queryName.value = ''; queryStatus.value = ''; page.value = 1 }
 
 const downloadCert = async (row) => {
+  if (row.hours === 0 && row.minutes === 0) {
+    ElMessage.warning('认证工时为 0，该证书已自动失效，无法下载')
+    return
+  }
   downloadingId.value = row.certId
   try {
-    await downloadCertPdf(row.certId, `${row.certName || '证书'}-${row.certId}.pdf`)
+    await loadData()
+    const cert = certList.value.find(c => c.certId === row.certId)
+    if (!cert) {
+      ElMessage.error('证书不存在')
+      return
+    }
+    if (cert.status === '已失效' || (cert.hours === 0 && cert.minutes === 0)) {
+      ElMessage.warning('该证书已失效，无法下载')
+      return
+    }
+    await downloadCertPdf(cert.certId, `${cert.certName || '证书'}-${cert.certId}.pdf`)
     ElMessage.success('证书下载已开始')
   } catch (e) {
     ElMessage.error('下载失败，请确认证书有效')
