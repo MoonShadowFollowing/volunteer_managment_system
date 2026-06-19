@@ -108,7 +108,7 @@ const loadData = async () => {
   try {
     const res = await myCertificates({ page: 1, pageSize: 500 })
     certList.value = res.rows || []
-  } finally {
+  } catch (_) { /* 拦截器已处理 */ } finally {
     loading.value = false
   }
 }

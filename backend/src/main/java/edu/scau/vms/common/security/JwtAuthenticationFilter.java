@@ -1,6 +1,8 @@
 package edu.scau.vms.common.security;
 
 import edu.scau.vms.common.constant.ErrorCode;
+import edu.scau.vms.module.user.entity.User;
+import edu.scau.vms.module.user.mapper.UserMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -27,6 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtService jwt;
+    private final UserMapper userMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
@@ -39,7 +42,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = header.substring(BEARER_PREFIX.length()).trim();
         try {
             Claims claims = jwt.parse(token);
-            UserPrincipal p = jwt.toPrincipal(claims);
+            Long userId = Long.valueOf(claims.getSubject());
+            User u = userMapper.selectById(userId);
+            if (u == null) {
+                SecurityContextHolder.clearContext();
+                SecurityExceptionResponder.write(res, 401, ErrorCode.TOKEN_INVALID, "用户不存在");
+                return;
+            }
+
+            // 以数据库最新状态覆盖 JWT 中的 org/adm 声明
+            UserPrincipal p = new UserPrincipal(
+                    u.getUserId(),
+                    u.getUsername(),
+                    u.getName(),
+                    u.getRole(),
+                    Boolean.TRUE.equals(u.getIsOrganizer()),
+                    Boolean.TRUE.equals(u.getIsAdmin())
+            );
 
             List<SimpleGrantedAuthority> auths = new ArrayList<>(3);
             auths.add(new SimpleGrantedAuthority("ROLE_" + p.role().toUpperCase()));

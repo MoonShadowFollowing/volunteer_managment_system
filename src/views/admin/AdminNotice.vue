@@ -96,7 +96,7 @@ const loadData = async () => {
     const res = await listNotices({ page: page.value, pageSize: pageSize.value })
     noticeList.value = res.rows || []
     total.value = res.total || 0
-  } finally {
+  } catch (_) { /* 403 拦截器已处理 */ } finally {
     loading.value = false
   }
 }

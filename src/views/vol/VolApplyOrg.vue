@@ -102,7 +102,7 @@ const loadApps = async () => {
       localStorage.setItem('isOrganizerQualified', 'true')
       window.dispatchEvent(new CustomEvent('org-auth-updated'))
     }
-  } finally {
+  } catch (_) { /* 403 拦截器已处理 */ } finally {
     loading.value = false
   }
 }

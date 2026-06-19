@@ -271,10 +271,11 @@ const loadActivities = async () => {
     })
     activities.value = res.rows || []
     activityTotal.value = res.total || 0
-  } finally {
+  } catch (_) { /* 403 拦截器已提示并跳转 */ } finally {
     actLoading.value = false
   }
 }
+
 onMounted(loadActivities)
 
 const handleSearch = () => { activityPage.value = 1; loadActivities() }
@@ -309,7 +310,7 @@ const loadRegs = async () => {
       return 0
     })
     volunteers.value = rows
-  } finally {
+  } catch (_) { /* 403 拦截器已处理 */ } finally {
     regLoading.value = false
   }
 }
@@ -330,7 +331,7 @@ const loadAtts = async () => {
   try {
     const res = await listAttendance({ activityId: currentActivity.value.activityId, page: 1, pageSize: 500 })
     signRecords.value = res.rows || []
-  } finally {
+  } catch (_) { /* 403 拦截器已处理 */ } finally {
     attLoading.value = false
   }
 }

@@ -39,13 +39,34 @@ http.interceptors.response.use(
     }
     return body
   },
-  err => {
+  async err => {
     const status = err?.response?.status
     const body = err?.response?.data
     if (status === 401) {
       clearAuthAndRedirect(body?.msg || '登录已过期，请重新登录')
     } else if (status === 403) {
       ElMessage.error(body?.msg || '权限不足')
+      // 权限可能已被管理员撤销，静默刷新 /auth/me 同步本地状态
+      try {
+        const token = localStorage.getItem('token')
+        if (token) {
+          const me = await http.get('/auth/me')
+          if (me) {
+            localStorage.setItem('isOrganizerQualified', String(me.isOrganizerQualified))
+            localStorage.setItem('isAdmin', String(me.isAdmin))
+            localStorage.setItem('userRole', me.role)
+            const isOrgRoute = router.currentRoute.value.path.startsWith('/sys/org-')
+            if (!me.isOrganizerQualified && isOrgRoute) {
+              ElMessage.warning('您的组织者权限已被撤销，已切换为志愿者身份')
+              router.push('/sys/dashboard-volun')
+            }
+            if (!me.isAdmin && router.currentRoute.value.path.startsWith('/sys/admin-')) {
+              ElMessage.warning('您的管理员权限已被撤销')
+              router.push('/sys/dashboard-volun')
+            }
+          }
+        }
+      } catch (_) { /* 静默 */ }
     } else if (status === 500) {
       ElMessage.error(body?.msg || '服务器内部错误')
     } else if (err?.code === 'ECONNABORTED') {

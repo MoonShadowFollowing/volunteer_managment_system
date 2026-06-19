@@ -84,7 +84,7 @@ const loadData = async () => {
   try {
     const res = await myMessages({ page: 1, pageSize: 500, role: 'volunteer' })
     msgs.value = res.rows || []
-  } finally {
+  } catch (_) { /* 拦截器已处理 */ } finally {
     loading.value = false
   }
 }

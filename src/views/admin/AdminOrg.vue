@@ -107,7 +107,7 @@ const loadData = async () => {
     const res = await listApplications({ status: queryStatus.value || undefined, page: 1, pageSize: 200 })
     list.value = res.rows || []
     page.value = 1
-  } finally {
+  } catch (_) { /* 403 拦截器已处理 */ } finally {
     loading.value = false
   }
 }
