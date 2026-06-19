@@ -6,6 +6,7 @@ import edu.scau.vms.common.PageResult;
 import edu.scau.vms.common.constant.AttendStatus;
 import edu.scau.vms.common.constant.CertStatus;
 import edu.scau.vms.common.constant.ErrorCode;
+import edu.scau.vms.common.constant.MsgType;
 import edu.scau.vms.common.exception.BizException;
 import edu.scau.vms.module.activity.entity.Activity;
 import edu.scau.vms.module.activity.mapper.ActivityMapper;
@@ -16,6 +17,7 @@ import edu.scau.vms.module.attendance.entity.Attendance;
 import edu.scau.vms.module.attendance.mapper.AttendanceMapper;
 import edu.scau.vms.module.certificate.entity.Certificate;
 import edu.scau.vms.module.certificate.mapper.CertificateMapper;
+import edu.scau.vms.module.message.MessageService;
 import edu.scau.vms.module.user.UserService;
 import edu.scau.vms.module.user.entity.User;
 import edu.scau.vms.module.registration.RegistrationService;
@@ -40,6 +42,7 @@ public class AttendanceService {
     private final ActivityMapper activityMapper;
     private final CertificateMapper certificateMapper;
     private final UserService userService;
+    private final MessageService messageService;
 
     public PageResult<AttendanceVO> byActivity(Long activityId, Long page, Long size, Long currentUserId, boolean isAdmin) {
         Activity a = activityMapper.selectById(activityId);
@@ -109,6 +112,14 @@ public class AttendanceService {
             cert.setStatus(CertStatus.INVALID);
             certificateMapper.updateById(cert);
         }
+
+        User vol = userService.findById(att.getVolunteerId());
+        messageService.sendDirect(att.getVolunteerId(), MsgType.ACTIVITY_NOTICE,
+                "志愿时已更新 - " + a.getTitle(),
+                "您在活动【" + a.getTitle() + "】中的志愿时已被管理员更新为 "
+                        + req.getHours() + " 小时 " + req.getMinutes() + " 分钟。"
+                        + (hasHours ? "您的志愿服务证书已同步更新。" : "注意：由于工时归零，相关证书已失效。"),
+                "volunteer");
     }
 
     @Transactional
@@ -167,6 +178,13 @@ public class AttendanceService {
                 certificateMapper.updateById(cert);
             }
         }
+
+        User vol = userService.findById(att.getVolunteerId());
+        messageService.sendDirect(att.getVolunteerId(), MsgType.ACTIVITY_NOTICE,
+                "补签成功 - " + a.getTitle(),
+                "您在活动【" + a.getTitle() + "】中已由管理员手动补签，志愿时登记为 "
+                        + req.getHours() + " 小时 " + req.getMinutes() + " 分钟。",
+                "volunteer");
     }
 
     private Certificate findCert(Long activityId, Long volunteerId) {
@@ -198,7 +216,7 @@ public class AttendanceService {
                     .actNo(a == null ? null : a.getStartTime().format(ACT_NO_FMT) + String.format("%04d", a.getActivityId()))
                     .activityName(a == null ? null : a.getTitle())
                     .volunteerId(att.getVolunteerId())
-                    .volId(u == null ? null : userService.formatUserNo(u))
+                    .volId(u == null ? null : "VOL-" + u.getUsername())
                     .volName(u == null ? null : u.getName())
                     .checkInTime(att.getCheckInTime())
                     .checkOutTime(att.getCheckOutTime())

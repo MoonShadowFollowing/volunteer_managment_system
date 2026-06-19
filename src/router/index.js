@@ -18,13 +18,13 @@ const routes = [
       { path: 'vol-activity', component: () => import('../views/vol/VolActivity.vue'), meta: { title: '志愿活动', icon: 'List', roles: ['volunteer'] } },
       { path: 'vol-applied', component: () => import('../views/vol/VolApplied.vue'), meta: { title: '已报名活动', icon: 'Checked', roles: ['volunteer'] } },
       { path: 'vol-cert', component: () => import('../views/vol/VolCert.vue'), meta: { title: '证书查询', icon: 'Medal', roles: ['volunteer'] } },
-      { path: 'vol-msg', component: () => import('../views/vol/VolMsg.vue'), meta: { title: '我的消息', icon: 'Message', roles: ['volunteer'] } },
+      { path: 'vol-msg', component: () => import('../views/vol/VolMsg.vue'), meta: { title: '我的消息', icon: 'Message', roles: ['volunteer'], showBadge: true } },
       { path: 'vol-apply-org', component: () => import('../views/vol/VolApplyOrg.vue'), meta: { title: '申请成为组织者', roles: ['volunteer'] } },
 
       // --- 组织者模块 ---
       { path: 'org-activity', component: () => import('../views/org/OrgActivity.vue'), meta: { title: '志愿活动', icon: 'Edit', roles: ['organizer'] } },
       { path: 'org-manage', component: () => import('../views/org/OrgManage.vue'), meta: { title: '活动管理', icon: 'Management', roles: ['organizer'] } },
-      { path: 'org-msg', component: () => import('../views/org/OrgMsg.vue'), meta: { title: '我的消息', icon: 'Message', roles: ['organizer'] } },
+      { path: 'org-msg', component: () => import('../views/org/OrgMsg.vue'), meta: { title: '我的消息', icon: 'Message', roles: ['organizer'], showBadge: true } },
 
       // --- 管理员模块 ---
       { path: 'admin-org', component: () => import('../views/admin/AdminOrg.vue'), meta: { title: '组织者审核', icon: 'User', roles: ['admin'] } },

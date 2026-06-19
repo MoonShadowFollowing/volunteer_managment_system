@@ -113,7 +113,8 @@ public class UserService {
         userMapper.updateById(u);
         messageService.sendDirect(userId, MsgType.QUAL_AUDIT,
                 "您已获得系统管理员权限",
-                "超级管理员已将您提升为系统管理员，可使用管理员功能。");
+                "超级管理员已将您提升为系统管理员，可使用管理员功能。",
+                "volunteer");
     }
 
     @Transactional
@@ -132,7 +133,8 @@ public class UserService {
         userMapper.updateById(u);
         messageService.sendDirect(userId, MsgType.QUAL_AUDIT,
                 "管理员权限已被撤销",
-                "超级管理员已撤销您的系统管理员权限。");
+                "超级管理员已撤销您的系统管理员权限。",
+                "volunteer");
     }
 
     /** 撤销组织者资质 */
@@ -152,7 +154,8 @@ public class UserService {
         userMapper.updateById(u);
         messageService.sendDirect(userId, MsgType.QUAL_AUDIT,
                 "组织者资质已被撤销",
-                "管理员已撤销您的组织者资质，您将无法继续发布活动。");
+                "管理员已撤销您的组织者资质，您将无法继续发布活动。",
+                "volunteer");
     }
 
     public UserSummaryVO toVO(User u) {

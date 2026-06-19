@@ -8,7 +8,10 @@
       <el-menu active-text-color="#e63946" background-color="#ffffff" class="el-menu-vertical" :default-active="$route.path" text-color="#606266" :collapse="isCollapse" router>
         <el-menu-item v-for="route in menus" :key="route.path" :index="'/sys/' + route.path">
           <el-icon><component :is="route.meta.icon"></component></el-icon>
-          <template #title>{{ route.meta.title }}</template>
+          <template #title>
+            {{ route.meta.title }}
+            <span v-if="route.meta.showBadge && msgUnread > 0" class="unread-dot">{{ msgUnread }}</span>
+          </template>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -45,10 +48,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Trophy, Fold, Expand, Ticket } from '@element-plus/icons-vue' // 确保导入图标
 import { fetchMe, logout as logoutApi } from '../api/auth'
+import { unreadCount, markAllRead } from '../api/message'
 
 const isCollapse = ref(false)
 const router = useRouter()
@@ -59,15 +63,28 @@ const hasOrgAuth = ref(localStorage.getItem('isOrganizerQualified') === 'true')
 const userName = ref(localStorage.getItem('userName') || '')
 const userUsername = ref(localStorage.getItem('userUsername') || '')
 
+const msgUnread = ref(0)
+
 const menus = computed(() => {
   const sysRoutes = router.options.routes.find(r => r.path === '/sys').children
   return sysRoutes.filter(r => r.meta && r.meta.roles && r.meta.roles.includes(currentRole.value) && r.path !== 'vol-apply-org')
 })
 
 const toggleCollapse = () => { isCollapse.value = !isCollapse.value }
+
+const fetchUnread = async () => {
+  const role = currentRole.value
+  const scope = role === 'volunteer' || role === 'organizer' ? role : null
+  try {
+    const res = await unreadCount({ role: scope })
+    msgUnread.value = res ?? 0
+  } catch (_) { msgUnread.value = 0 }
+}
+
 const switchRole = (targetRole) => {
   currentRole.value = targetRole
   localStorage.setItem('userRole', targetRole)
+  fetchUnread()
   router.push(targetRole === 'organizer' ? '/sys/dashboard-org' : '/sys/dashboard-volun')
 }
 
@@ -105,17 +122,23 @@ const logout = async () => {
 }
 
 // 刷新场景：token 存在但本地缓存丢了 → 调 /auth/me 回填
+const onOrgAuthUpdated = () => {
+  hasOrgAuth.value = localStorage.getItem('isOrganizerQualified') === 'true'
+}
+
 onMounted(async () => {
-  if (localStorage.getItem('token') && !localStorage.getItem('userName')) {
+  if (localStorage.getItem('token')) {
     try {
       const me = await fetchMe()
-      localStorage.setItem('userRole', me.role)
+      if (!localStorage.getItem('userRole')) {
+        localStorage.setItem('userRole', me.role)
+      }
       localStorage.setItem('isOrganizerQualified', String(me.isOrganizerQualified))
       localStorage.setItem('isAdmin', String(me.isAdmin))
       localStorage.setItem('userName', me.name)
       localStorage.setItem('userUsername', me.username)
       localStorage.setItem('userId', String(me.userId))
-      currentRole.value = me.role
+      currentRole.value = localStorage.getItem('userRole')
       hasOrgAuth.value = me.isOrganizerQualified
       userName.value = me.name
       userUsername.value = me.username
@@ -123,13 +146,24 @@ onMounted(async () => {
       // 401 由拦截器统一处理
     }
   }
+  fetchUnread()
+  window.addEventListener('org-auth-updated', onOrgAuthUpdated)
 })
 
-watch(() => route.path, () => {
+onUnmounted(() => {
+  window.removeEventListener('org-auth-updated', onOrgAuthUpdated)
+})
+
+watch(() => route.path, async () => {
   hasOrgAuth.value = localStorage.getItem('isOrganizerQualified') === 'true'
   currentRole.value = localStorage.getItem('userRole') || 'volunteer'
   userName.value = localStorage.getItem('userName') || userName.value
   userUsername.value = localStorage.getItem('userUsername') || userUsername.value
+  if (route.path.endsWith('-msg')) {
+    const scope = currentRole.value === 'volunteer' || currentRole.value === 'organizer' ? currentRole.value : null
+    try { await markAllRead({ role: scope }) } catch (_) {}
+    msgUnread.value = 0
+  }
 })
 </script>
 
@@ -159,5 +193,20 @@ watch(() => route.path, () => {
 
 .user-info { display: flex; align-items: center; cursor: pointer; outline: none; }
 .username { margin: 0 8px; color: #666; }
+.unread-dot {
+  display: inline-block;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  border-radius: 9px;
+  background: #f56c6c;
+  color: #fff;
+  font-size: 11px;
+  text-align: center;
+  margin-left: 6px;
+  vertical-align: middle;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
 .main-content { padding: 20px; box-sizing: border-box; }
 </style>

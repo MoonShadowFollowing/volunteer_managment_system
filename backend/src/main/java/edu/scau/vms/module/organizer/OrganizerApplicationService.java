@@ -98,7 +98,8 @@ public class OrganizerApplicationService {
         messageService.sendDirect(app.getApplicantId(), MsgType.QUAL_AUDIT,
                 approve ? "组织者资质审核通过" : "组织者资质审核未通过",
                 approve ? "恭喜！您已具备组织者资质，可在右上角切换为组织者发布活动。"
-                        : "很抱歉，您的组织者申请未通过审核，可补充材料后再次提交。");
+                        : "很抱歉，您的组织者申请未通过审核，可补充材料后再次提交。",
+                "volunteer");
     }
 
     private List<ApplicationVO> toVOs(List<OrganizerApplication> list) {

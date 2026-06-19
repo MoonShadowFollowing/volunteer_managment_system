@@ -199,7 +199,13 @@ const loadData = async () => {
       page: page.value,
       pageSize: pageSize.value
     })
-    tableData.value = res.rows || []
+    const rows = res.rows || []
+    rows.sort((a, b) => {
+      if (a.auditStatus === '待审核' && b.auditStatus !== '待审核') return -1
+      if (a.auditStatus !== '待审核' && b.auditStatus === '待审核') return 1
+      return 0
+    })
+    tableData.value = rows
     total.value = res.total || 0
   } catch (e) {
     /* 拦截器已提示 */

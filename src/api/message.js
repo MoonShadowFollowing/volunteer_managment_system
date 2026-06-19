@@ -1,6 +1,6 @@
 import http from './index'
 
-// 我的消息（含公告实化条目）；params: page,pageSize,type
+// 我的消息（含公告实化条目）；params: page,pageSize,type,role
 export const myMessages = (params) => http.get('/messages/mine', { params })
 
 // 历史公告列表（原始条目）；params: page,pageSize
@@ -8,3 +8,9 @@ export const listNotices = (params) => http.get('/messages/notices', { params })
 
 // 管理员发公告：{title,content,targets:["全体志愿者","全体组织者"]}
 export const sendNotice = (body) => http.post('/messages/notice', body)
+
+// 未读消息数；params: role
+export const unreadCount = (params) => http.get('/messages/unread', { params })
+
+// 全部标记已读；params: role
+export const markAllRead = (params) => http.put('/messages/read-all', null, { params })

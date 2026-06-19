@@ -16,12 +16,14 @@
           </el-form-item>
           <el-form-item label="证明材料上传">
             <el-upload
+              ref="uploadRef"
               :action="uploadAction"
               :headers="uploadHeaders()"
               name="file"
               :limit="1"
               :on-success="onUploadSuccess"
               :on-error="onUploadError"
+              :on-remove="onUploadRemove"
               :before-upload="beforeUpload"
             >
               <el-button type="primary">选择文件上传</el-button>
@@ -34,7 +36,7 @@
             </div>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" size="large" :loading="submitting" @click="submitApply">提交申请</el-button>
+            <el-button type="primary" size="large" :loading="submitting" :disabled="!materialUrl" @click="submitApply">提交申请</el-button>
           </el-form-item>
         </el-form>
       </div>
@@ -86,6 +88,7 @@ const volNo = formatUserNo()
 
 const reason = ref('')
 const materialUrl = ref('')
+const uploadRef = ref(null)
 const submitting = ref(false)
 const loading = ref(false)
 const myApps = ref([])
@@ -95,6 +98,10 @@ const loadApps = async () => {
   try {
     const res = await myApplications({ page: 1, pageSize: 100 })
     myApps.value = res.rows || []
+    if (myApps.value.some(a => a.auditStatus === '已通过')) {
+      localStorage.setItem('isOrganizerQualified', 'true')
+      window.dispatchEvent(new CustomEvent('org-auth-updated'))
+    }
   } finally {
     loading.value = false
   }
@@ -116,6 +123,9 @@ const onUploadSuccess = (response) => {
     ElMessage.error(response?.msg || '上传失败')
   }
 }
+const onUploadRemove = () => {
+  materialUrl.value = ''
+}
 const onUploadError = () => ElMessage.error('上传失败，请重试')
 
 const submitApply = async () => {
@@ -127,6 +137,7 @@ const submitApply = async () => {
     ElMessage.success('申请已提交，等待管理员审核！')
     reason.value = ''
     materialUrl.value = ''
+    uploadRef.value?.clearFiles()
     await loadApps()
   } catch (e) {
     /* 拦截器已提示（如重复提交） */

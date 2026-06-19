@@ -27,11 +27,14 @@ public class MessageService {
     private final MessageMapper messageMapper;
     private final UserMapper userMapper;
 
-    /** 个人收件箱（仅 receiver_id 命中），不含原始公告条目；公告以广播实化方式落到收件人 */
-    public PageResult<MessageVO> mine(Long userId, Long page, Long size, String type) {
+    /** 个人收件箱，按身份隔离：只显示 targetScope 匹配当前角色或无隔离标记的消息 */
+    public PageResult<MessageVO> mine(Long userId, Long page, Long size, String type, String role) {
         LambdaQueryWrapper<Message> qw = new LambdaQueryWrapper<>();
         qw.eq(Message::getReceiverId, userId);
         if (type != null && !type.isBlank()) qw.eq(Message::getMsgType, type);
+        if (role != null && !role.isBlank()) {
+            qw.and(w -> w.eq(Message::getTargetScope, role).or().isNull(Message::getTargetScope));
+        }
         qw.orderByDesc(Message::getSendTime);
         Page<Message> p = new Page<>(page == null ? 1 : page, size == null ? 10 : size);
         Page<Message> result = messageMapper.selectPage(p, qw);
@@ -53,11 +56,14 @@ public class MessageService {
     @Transactional
     public void broadcast(NoticeRequest req) {
         LocalDateTime now = LocalDateTime.now();
+        String rawScope = String.join(",", req.getTargets());
+        String roleScope = computeScope(req.getTargets());
+
         Message origin = new Message();
         origin.setMsgType(MsgType.SYS_NOTICE);
         origin.setTitle(req.getTitle());
         origin.setContent(req.getContent());
-        origin.setTargetScope(String.join(",", req.getTargets()));
+        origin.setTargetScope(rawScope);
         origin.setSendTime(now);
         origin.setIsRead(false);
         messageMapper.insert(origin);
@@ -68,22 +74,40 @@ public class MessageService {
             m.setTitle(req.getTitle());
             m.setContent(req.getContent());
             m.setReceiverId(u.getUserId());
+            m.setTargetScope(roleScope);
             m.setSendTime(now);
             m.setIsRead(false);
             messageMapper.insert(m);
         }
     }
 
-    /** 业务通知：直送某一用户 */
-    public void sendDirect(Long receiverId, String type, String title, String content) {
+    /** 业务通知：直送某一用户，targetScope 控制身份隔离 */
+    public void sendDirect(Long receiverId, String type, String title, String content, String scope) {
         Message m = new Message();
         m.setMsgType(type);
         m.setTitle(title);
         m.setContent(content);
         m.setReceiverId(receiverId);
+        m.setTargetScope(scope);
         m.setSendTime(LocalDateTime.now());
         m.setIsRead(false);
         messageMapper.insert(m);
+    }
+
+    public int countUnread(Long userId, String scope) {
+        return messageMapper.countUnread(userId, scope);
+    }
+
+    public void markAllRead(Long userId, String scope) {
+        messageMapper.markAllRead(userId, scope);
+    }
+
+    private String computeScope(List<String> targets) {
+        boolean wantVol = targets.contains("全体志愿者");
+        boolean wantOrg = targets.contains("全体组织者");
+        if (wantVol && !wantOrg) return "volunteer";
+        if (wantOrg && !wantVol) return "organizer";
+        return null;
     }
 
     private List<User> findTargetUsers(List<String> targets) {

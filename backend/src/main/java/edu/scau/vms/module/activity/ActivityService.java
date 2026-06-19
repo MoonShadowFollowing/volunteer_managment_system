@@ -51,7 +51,7 @@ public class ActivityService {
             qw.eq(Activity::getAuditStatus, AuditStatus.APPROVED)
               .eq(Activity::getPublishStatus, PublishStatus.PUBLISHED);
         }
-        qw.orderByDesc(Activity::getStartTime);
+        qw.last("ORDER BY CASE WHEN audit_status = '待审核' THEN 0 ELSE 1 END, start_time DESC");
 
         Page<Activity> p = new Page<>(page == null ? 1 : page, size == null ? 10 : size);
         Page<Activity> result = activityMapper.selectPage(p, qw);

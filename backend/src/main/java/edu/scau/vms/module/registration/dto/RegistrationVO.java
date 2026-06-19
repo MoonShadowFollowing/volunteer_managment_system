@@ -28,7 +28,7 @@ public class RegistrationVO {
     private Integer enrolledNum;
 
     private Long volunteerId;
-    private String volId;       // 展示编号：VOL-{id zero pad 5}
+    private String volId;       // 展示编号，由 UserService.formatUserNo 生成
     private String volName;
 
     /** 报名审核状态：待审核/审核通过/审核拒绝/已取消 */

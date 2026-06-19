@@ -122,7 +122,17 @@ public class RegistrationService {
 
         messageService.sendDirect(r.getVolunteerId(), MsgType.REG_NOTICE,
                 approve ? "报名审核通过" : "报名审核未通过",
-                "您报名的【" + a.getTitle() + "】" + (approve ? "已审核通过，请按时签到。" : "未通过审核。"));
+                "您报名的【" + a.getTitle() + "】" + (approve ? "已审核通过，请按时签到。" : "未通过审核。"),
+                "volunteer");
+
+        // 通知组织者审核结果
+        User applicant = userService.findById(r.getVolunteerId());
+        messageService.sendDirect(a.getOrganizerId(), MsgType.REG_NOTICE,
+                "报名审核已处理",
+                "志愿者 " + (applicant != null ? applicant.getName() : "未知") + "（" + (applicant != null ? userService.formatUserNo(applicant) : "VOL-未知") + "）"
+                        + "对【" + a.getTitle() + "】的报名已"
+                        + (approve ? "通过" : "拒绝") + "。",
+                "organizer");
     }
 
     /** 志愿者：我的已报名列表 */
@@ -207,7 +217,7 @@ public class RegistrationService {
                     .limitNum(a == null ? null : a.getCapacity())
                     .enrolledNum(enrolled.getOrDefault(r.getActivityId(), 0L).intValue())
                     .volunteerId(r.getVolunteerId())
-                    .volId(u == null ? null : userService.formatUserNo(u))
+                    .volId(u == null ? null : "VOL-" + u.getUsername())
                     .volName(u == null ? null : u.getName())
                     .auditStatus(r.getAuditStatus())
                     .appliedAt(r.getAppliedAt())
@@ -225,7 +235,4 @@ public class RegistrationService {
         }).collect(Collectors.toList());
     }
 
-    public static String formatVolId(Long userId) {
-        return "VOL-" + String.format("%05d", userId);
-    }
 }

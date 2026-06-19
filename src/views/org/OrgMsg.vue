@@ -5,6 +5,8 @@
         <el-form-item label="消息类型">
           <el-select v-model="queryType" placeholder="请选择" clearable style="width:150px">
             <el-option label="活动通知" value="活动通知" />
+            <el-option label="报名通知" value="报名通知" />
+            <el-option label="资质审核" value="资质审核" />
             <el-option label="系统公告" value="系统公告" />
           </el-select>
         </el-form-item>
@@ -29,7 +31,7 @@
         </el-table-column>
         <el-table-column prop="type" label="类型" width="100" align="center">
           <template #default="scope">
-            <el-tag :type="scope.row.type === '系统公告' ? 'danger' : 'success'">{{ scope.row.type }}</el-tag>
+            <el-tag :type="tagType(scope.row.type)">{{ scope.row.type }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
@@ -79,7 +81,7 @@ const loading = ref(false)
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await myMessages({ page: 1, pageSize: 500 })
+    const res = await myMessages({ page: 1, pageSize: 500, role: 'organizer' })
     msgs.value = res.rows || []
   } finally {
     loading.value = false
@@ -100,6 +102,13 @@ const filteredMsgs = computed(() => {
 const pagedMsgs = computed(() => {
   return filteredMsgs.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value)
 })
+
+const tagType = (type) => {
+  if (type === '系统公告') return 'danger'
+  if (type === '报名通知') return 'warning'
+  if (type === '资质审核') return 'info'
+  return 'success'
+}
 
 const handleSearch = () => { page.value = 1 }
 const handleReset = () => { queryType.value = ''; queryDate.value = []; page.value = 1 }

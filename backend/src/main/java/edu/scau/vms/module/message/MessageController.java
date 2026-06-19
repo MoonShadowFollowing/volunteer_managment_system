@@ -27,8 +27,9 @@ public class MessageController {
             @AuthenticationPrincipal UserPrincipal me,
             @RequestParam(required = false, defaultValue = "1") Long page,
             @RequestParam(required = false, defaultValue = "10") Long pageSize,
-            @RequestParam(required = false) String type) {
-        return Result.ok(messageService.mine(me.userId(), page, pageSize, type));
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String role) {
+        return Result.ok(messageService.mine(me.userId(), page, pageSize, type, role));
     }
 
     @Operation(summary = "历史公告列表")
@@ -45,6 +46,23 @@ public class MessageController {
     @PreAuthorize("hasAuthority('ADM')")
     public Result<Void> notice(@Valid @RequestBody NoticeRequest req) {
         messageService.broadcast(req);
+        return Result.ok();
+    }
+
+    @Operation(summary = "未读消息数")
+    @GetMapping("/unread")
+    public Result<Integer> unread(
+            @AuthenticationPrincipal UserPrincipal me,
+            @RequestParam(required = false) String role) {
+        return Result.ok(messageService.countUnread(me.userId(), role));
+    }
+
+    @Operation(summary = "全部标记已读")
+    @PutMapping("/read-all")
+    public Result<Void> readAll(
+            @AuthenticationPrincipal UserPrincipal me,
+            @RequestParam(required = false) String role) {
+        messageService.markAllRead(me.userId(), role);
         return Result.ok();
     }
 }
