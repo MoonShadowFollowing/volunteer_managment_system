@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Stat", description = "工作台聚合统计 FR-06")
@@ -21,7 +22,9 @@ public class StatController {
 
     @Operation(summary = "工作台数据（按当前角色返回不同字段）")
     @GetMapping("/dashboard")
-    public Result<DashboardStats> dashboard(@AuthenticationPrincipal UserPrincipal me) {
-        return Result.ok(statService.forUser(me));
+    public Result<DashboardStats> dashboard(
+            @AuthenticationPrincipal UserPrincipal me,
+            @RequestParam(required = false) String view) {
+        return Result.ok(statService.forUser(me, view));
     }
 }

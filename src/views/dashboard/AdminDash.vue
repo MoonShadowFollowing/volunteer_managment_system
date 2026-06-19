@@ -23,7 +23,7 @@ const loading = ref(false)
 onMounted(async () => {
   loading.value = true
   try {
-    const res = await dashboard()
+    const res = await dashboard('admin')
     m.value = res.metrics || {}
   } catch (_) {
     // 401 等错误已由拦截器统一处理

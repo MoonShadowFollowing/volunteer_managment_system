@@ -35,20 +35,31 @@ public class StatService {
     private final AttendanceMapper attendanceMapper;
     private final CertificateMapper certificateMapper;
 
-    public DashboardStats forUser(UserPrincipal me) {
-        String role = me.role();
+    public DashboardStats forUser(UserPrincipal me, String view) {
+        // 前端可以传 view 指定看哪个角色的看板（双身份用户切换时需要）
+        String effectiveRole = resolveEffectiveRole(me, view);
         Map<String, Object> m = new LinkedHashMap<>();
-        // 管理员 ⊇ 组织者 ⊇ 志愿者（递进关系），必须按高权限优先判断
-        if (Role.SUPERADMIN.equals(role)) {
-            superMetrics(m);
-        } else if (Role.ADMIN.equals(role) || me.admin()) {
-            adminMetrics(m);
-        } else if (me.organizer()) {
-            organizerMetrics(me.userId(), m);
-        } else {
-            volunteerMetrics(me.userId(), m);
+        switch (effectiveRole) {
+            case Role.SUPERADMIN -> superMetrics(m);
+            case Role.ADMIN -> adminMetrics(m);
+            case Role.ORGANIZER -> organizerMetrics(me.userId(), m);
+            default -> volunteerMetrics(me.userId(), m);
         }
-        return DashboardStats.builder().role(role).metrics(m).build();
+        return DashboardStats.builder().role(effectiveRole).metrics(m).build();
+    }
+
+    /** 校验 view 参数是否在用户权限范围内，不合法则回退到 JWT 中的角色 */
+    private String resolveEffectiveRole(UserPrincipal me, String view) {
+        if (view == null || view.isBlank()) {
+            return me.role();
+        }
+        return switch (view) {
+            case Role.VOLUNTEER -> Role.VOLUNTEER;
+            case Role.ORGANIZER -> me.organizer() ? Role.ORGANIZER : me.role();
+            case Role.ADMIN -> me.admin() ? Role.ADMIN : me.role();
+            case Role.SUPERADMIN -> Role.SUPERADMIN.equals(me.role()) ? Role.SUPERADMIN : me.role();
+            default -> me.role();
+        };
     }
 
     private void volunteerMetrics(Long userId, Map<String, Object> m) {

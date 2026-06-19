@@ -56,7 +56,8 @@ public class RegistrationService {
         LambdaQueryWrapper<Registration> qw = new LambdaQueryWrapper<>();
         qw.eq(Registration::getActivityId, activityId).eq(Registration::getVolunteerId, volunteerId);
         Registration exist = registrationMapper.selectOne(qw);
-        if (exist != null && !RegStatus.CANCELLED.equals(exist.getAuditStatus())) {
+        if (exist != null && !RegStatus.CANCELLED.equals(exist.getAuditStatus())
+                && !RegStatus.REJECTED.equals(exist.getAuditStatus())) {
             throw new BizException(ErrorCode.BIZ_CONFLICT, "您已报名该活动");
         }
         long approved = countApproved(activityId);
@@ -64,7 +65,7 @@ public class RegistrationService {
             throw new BizException(ErrorCode.BIZ_CONFLICT, "活动报名人数已满");
         }
         if (exist != null) {
-            // 之前取消过，复用记录改回待审核
+            // 之前取消或被拒绝，复用记录改回待审核
             exist.setAuditStatus(RegStatus.PENDING);
             exist.setAuditedAt(null);
             exist.setAppliedAt(LocalDateTime.now());
