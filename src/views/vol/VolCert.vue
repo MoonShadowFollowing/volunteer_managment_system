@@ -18,6 +18,7 @@
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
+          <el-button type="success" icon="Download" @click="exportPersonalHours">导出我的工时 Excel</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -94,6 +95,7 @@
 import { onMounted, ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { myCertificates, downloadCertPdf } from '../../api/certificate'
+import { downloadPersonalHoursXlsx } from '../../api/report'
 
 const queryName = ref('')
 const queryStatus = ref('')
@@ -154,6 +156,13 @@ const downloadCert = async (row) => {
   } finally {
     downloadingId.value = null
   }
+}
+
+const exportPersonalHours = async () => {
+  try {
+    await downloadPersonalHoursXlsx()
+    ElMessage.success('工时报表已导出')
+  } catch (_) { /* 拦截器已提示 */ }
 }
 </script>
 

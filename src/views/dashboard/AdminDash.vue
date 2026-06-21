@@ -11,15 +11,37 @@
       <p style="color:#67c23a">● 数据库连接正常</p>
       <p style="color:#67c23a">● 本地备份服务运行中</p>
     </el-card>
+
+    <el-card style="margin-top:20px" header="月度志愿工时报表">
+      <el-form :inline="true">
+        <el-form-item label="年份">
+          <el-input-number v-model="reportYear" :min="2020" :max="2099" />
+        </el-form-item>
+        <el-form-item label="月份">
+          <el-input-number v-model="reportMonth" :min="1" :max="12" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="success" icon="Download" :loading="exporting" @click="exportMonthly">导出月度全院汇总 Excel</el-button>
+        </el-form-item>
+      </el-form>
+      <p style="color:#909399;font-size:13px;margin:8px 0 0">将按签退月份统计全校志愿者参与活动数与累计工时，可用于行政归档与综测对接。</p>
+    </el-card>
   </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { dashboard } from '../../api/stat'
+import { downloadMonthlyXlsx } from '../../api/report'
 
 const m = ref({})
 const loading = ref(false)
+const exporting = ref(false)
+const now = new Date()
+const reportYear = ref(now.getFullYear())
+const reportMonth = ref(now.getMonth() + 1)
+
 onMounted(async () => {
   loading.value = true
   try {
@@ -31,6 +53,16 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+const exportMonthly = async () => {
+  exporting.value = true
+  try {
+    await downloadMonthlyXlsx(reportYear.value, reportMonth.value)
+    ElMessage.success(`${reportYear.value} 年 ${reportMonth.value} 月报表已导出`)
+  } catch (_) { /* 拦截器已提示 */ } finally {
+    exporting.value = false
+  }
+}
 </script>
 
 <style scoped>.mb-20{margin-bottom:20px;text-align:center;color:#666}</style>

@@ -27,6 +27,7 @@
         <mysql.version>8.4.0</mysql.version>
         <jjwt.version>0.12.5</jjwt.version>
         <itext.version>7.2.5</itext.version>
+        <poi.version>5.2.5</poi.version>
     </properties>
 
     <dependencies>
@@ -91,7 +92,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- iText 7：证书 PDF 生成。font-asian 提供 STSong-Light 中文字体（基于 CJK 内嵌 CIDFont，无须 TTF 文件） -->
+        <!-- 证书 PDF 用 iText 7；font-asian 带了中文字体（STSong-Light），不用本地装 TTF -->
         <dependency>
             <groupId>com.itextpdf</groupId>
             <artifactId>itext7-core</artifactId>
@@ -102,6 +103,13 @@
             <groupId>com.itextpdf</groupId>
             <artifactId>font-asian</artifactId>
             <version>${itext.version}</version>
+        </dependency>
+
+        <!-- 报表导出（S6 加的），就用了 XSSFWorkbook 那点东西 -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${poi.version}</version>
         </dependency>
 
         <dependency>
