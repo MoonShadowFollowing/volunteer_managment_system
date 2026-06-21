@@ -38,6 +38,52 @@
 - 对外提供 RESTful API 供综合测评系统按学号查累计工时
 - 校园网中断时联机功能不可用，本地业务正常
 
+### 1.4 设计创新点与差异化
+
+与国内主流志愿服务平台（如 i志愿）相比，本系统的定位是**校园场景下轻量、自主、可二次开发的补充方案**——不替代全国统一平台，而是在校内本地化数据治理、双身份业务、工时-证书闭环、对外开放接口这些细颗粒场景做扎实。
+
+#### A. 产品定位（"为什么要做"）
+| # | 创新点 | 对应章节 / 实现位置 |
+|---|---|---|
+| A1 | **校内自主部署 + 数据本地化**：学校掌控数据库与流程，可一键改 `application-dev.yml` 切换 MySQL 实例 | §1.3 / §9 / `backend/src/main/resources/application-dev.yml` |
+| A2 | **对外开放 RESTful 综测接口**：`/api/public/hours?studentId=` 供综合测评系统按学号查累计工时（白名单免 JWT） | §7 / `module/external/PublicApiController` |
+| A3 | **互补叙事**：定位为院系/社团小型活动的本地化管理 + i志愿数据回灌渠道，避开正面竞争 | §1.1 |
+
+#### B. 业务流程（评审重点关注）
+| # | 创新点 | 对应章节 / 实现位置 |
+|---|---|---|
+| B1 | **两层活动状态机**（管理员审核 × 组织者前台启停）：可"先批准但延迟开放报名"，比单层审核更灵活 | §4.1 / `ActivityService` |
+| B2 | **双身份热切换**：volunteer + organizer 同一账号双面，登录后 `/role-select` 一键切，无须分账号 | §2 / `src/views/RoleSelect.vue` |
+| B3 | **工时 ↔ 证书双向联动**：改工时为 0 → 证书 `status=已失效`；改回 >0 → 自动复活/upsert，审计闭环 | §4.2 / `AttendanceService.updateHours` |
+| B4 | **管理员撤销权限实时生效**：`/auth/refresh` + 前端 403 拦截后 `/auth/me` 静默同步 → 当前页面立即跳回 volunteer 视图，无须重新登录 | `src/api/index.js:42-69` / `AuthService.refresh` |
+| B5 | **4 级 RBAC 权限**（超管 → 管理员 → 组织者 → 志愿者）：清晰分层，超管走专属直登通道 | §2 / §12.5 |
+
+#### C. 技术栈现代化（技术答辩点）
+| # | 创新点 | 对应章节 / 实现位置 |
+|---|---|---|
+| C1 | **现代主流栈**：Vue3 + Spring Boot 3 + JWT 无状态鉴权 + MyBatis-Plus + iText 7，二次开发友好 | §12.1 |
+| C2 | **中文 PDF 证书零外部字体依赖**：走 iText 7 内置 `STSong-Light/UniGB-UCS2-H`，部署轻便不挑环境 | `util/PdfGenerator` |
+| C3 | **统一契约**：12 个业务模块 + 统一 `Result<T>` + `PageResult<T>` + 中文枚举常量，模块横向扩展友好 | §12.2 / §12.3 |
+| C4 | **规模化种子数据**：`vms.seed.bulk: true` 自动灌入 ≥200 用户 / ≥100 活动 / ≥2000 报名+签到+工时，演示与压测就绪 | §8.2 / `BulkDataSeeder` |
+| C5 | **安全防护**：BCrypt 密码 + JWT + `@PreAuthorize` + Service 层 `mustOwn` 越权自校验双重防护 + 文件上传路径穿越校验 | §8.3 / `SecurityConfig` |
+
+#### D. 用户体验细节（Demo 容易出彩）
+| # | 创新点 | 对应章节 / 实现位置 |
+|---|---|---|
+| D1 | **消息身份隔离 + 未读红点**：志愿者收"报名通过"、组织者收"新报名"，互不打扰；顶栏未读计数实时刷新 | `MessageService` / `MainLayout` |
+| D2 | **4 类身份定制 Dashboard**：每个角色 metrics 不同，超管看赋权数、管理员看待审、组织者看本人活动、志愿者看累计工时 | §12.4 / `StatService` |
+| D3 | **身份前缀编号体系**：`VOL-学号 / ORG-学号 / ADM-学号 / SUP-学号`，列表/证书/PDF 一眼分清角色 | §12.6 |
+| D4 | **公告实化分发**：发公告时保留 1 条原始（`receiver_id=null`）+ 给每个目标用户插实化条，未读状态可独立跟踪 | §5.6 / `MessageService.sendNotice` |
+
+#### E. 理性边界（避免吹过头）
+- 不正面对标"取代 i志愿"：i志愿的全国数据互通、官方背书、用户规模是 VMS 不具备的绝对优势
+- 性能/安全的具体数字仅按 SRS §8 中 NFR 给出口径，未做工业级压测
+- 移动端不在当前范围内，仅 Web 桌面
+- 学校门户 SSO 暂用模拟接口对接，真接入需学校开放权限
+
+> **答辩开场话术建议**：
+> "i志愿解决全国志愿服务的统一登记与认证，VMS 是校园内 *轻量、自主、可二次开发* 的补充方案——把校园本地化数据、双身份业务、工时-证书联动、对外开放接口这些细颗粒场景做扎实，与 i志愿不是替代而是互补。"
+
 ---
 
 ## 2. 用户角色（4 类）
@@ -67,6 +113,8 @@
 | **FR-08** | 超管账号管理 | 超管 | 添加/移除管理员（专属后台） |
 | **FR-09** | 组织者申请与审核 | 志愿者 + 管理员 | 申请理由+证明材料上传 → 审核通过/拒绝 → 资质移除 |
 | **FR-10** | 消息与公告管理 | 管理员 + 志愿者 + 组织者 | 管理员发公告（可选范围）+ 业务通知 |
+| **FR-11** | 活动评价（S6 扩展）| 志愿者 + 组织者 | 双向打分：志愿者评活动组织者；组织者评签退志愿者；1~5 星 + 评语 |
+| **FR-12** | 报表导出（S6 扩展）| 志愿者 + 组织者 + 管理员 | 个人工时 xlsx / 活动签到汇总 xlsx / 月度全院汇总 xlsx |
 
 ---
 
@@ -221,19 +269,41 @@
 
 **索引建议**：INDEX(applicant_id, audit_status)、INDEX(audit_status, submitted_at)。
 
-### 5.8 表间关系总览（ER 概览）
+### 5.8 activity_reviews 活动评价表（S6 新增）
+
+| 字段 | 类型 | 长度 | PK | FK | NULL | 默认值 | 说明 |
+|---|---|---|---|---|---|---|---|
+| review_id | int | 11 | ✅ | | NOT NULL | AUTO_INCREMENT | |
+| activity_id | int | 11 | | ✅ | NOT NULL | - | → activities(activity_id) |
+| reviewer_id | int | 11 | | ✅ | NOT NULL | - | 评价人 → users(user_id) |
+| reviewer_role | varchar | 20 | | | NOT NULL | - | `volunteer` / `organizer` |
+| target_id | int | 11 | | ✅ | NOT NULL | - | 被评价人 → users(user_id) |
+| rating | int | - | | | NOT NULL | - | 1~5，DB 层 CHECK 约束 |
+| comment | varchar | 500 | | | NULL | - | 评语，可选 |
+| created_at | datetime | - | | | NOT NULL | CURRENT_TIMESTAMP | |
+
+**索引建议**：UNIQUE(activity_id, reviewer_id, target_id) 防重复评价；INDEX(target_id) 加速"我收到的"；INDEX(activity_id) 加速活动评价聚合。
+
+**业务规则**：
+- 志愿者只能评价自己 `attendance.status='已签退'` 的活动的组织者
+- 组织者只能评价自己活动里 `attendance.status='已签退'` 的志愿者
+- 同一 (activity_id, reviewer_id, target_id) 仅一条
+
+### 5.9 表间关系总览（ER 概览）
 
 ```
-users (1) ─── (N) activities       [organizer_id]
-users (1) ─── (N) registrations    [volunteer_id]
-users (1) ─── (N) attendance       [volunteer_id]
-users (1) ─── (N) certificates     [volunteer_id]
-users (1) ─── (N) messages         [receiver_id]
+users (1) ─── (N) activities             [organizer_id]
+users (1) ─── (N) registrations          [volunteer_id]
+users (1) ─── (N) attendance             [volunteer_id]
+users (1) ─── (N) certificates           [volunteer_id]
+users (1) ─── (N) messages               [receiver_id]
 users (1) ─── (N) organizer_applications [applicant_id / auditor_id]
+users (1) ─── (N) activity_reviews       [reviewer_id / target_id]
 
 activities (1) ─── (N) registrations
 activities (1) ─── (N) attendance
 activities (1) ─── (N) certificates
+activities (1) ─── (N) activity_reviews
 ```
 
 ---
@@ -472,6 +542,14 @@ volunteer_management_backend/
 | **对外 API** | GET `/api/public/hours?studentId=` | 综测系统按学号查累计工时（S5 ✅，白名单无须 JWT） | — |
 | **文件上传** | POST `/api/files/upload` | 单文件上传（≤5MB，jpg/png/gif/webp/pdf）→ 返回 `{url, filename, originalName, size}`（S5） | VolApplyOrg |
 | | GET `/api/files/static/**` | 公开访问上传过的文件（S5，白名单） | 申请记录"查看"链接 |
+| **活动评价**（S6）| POST `/api/reviews` | 提交评价（body: `{activityId, targetId, rating, comment}`，rating 1~5；DB UNIQUE 防重复；志愿者评组织者 / 组织者评签退志愿者） | VolApplied + OrgManage |
+| | GET `/api/reviews/mine` | 我提交过的评价分页 | — |
+| | GET `/api/reviews/received` | 我收到的评价分页 | — |
+| | GET `/api/reviews?activityId=` | 某活动下的全部评价（公开） | 活动详情可挂载 |
+| | GET `/api/reviews/summary?targetId=[&activityId=]` | 某人在某活动 / 全部活动的平均分 + 条数 | — |
+| **报表导出**（S6）| GET `/api/reports/personal-hours.xlsx[?volunteerId=]` | 个人工时 xlsx（本人或 admin），含合计行 | VolCert |
+| | GET `/api/reports/activity-summary.xlsx?activityId=` | 活动签到汇总 xlsx（组织者本人或 admin） | OrgManage |
+| | GET `/api/reports/monthly.xlsx?year=&month=` | 月度全院工时汇总 xlsx（admin），按签退月分组聚合 | AdminDash |
 
 ### 12.4.1 接口契约总览（S3 完工口径）
 
@@ -514,6 +592,7 @@ volunteer_management_backend/
 | **S3 核心业务闭环** | 第 3~4 天（2026-06-15 完成）| FR-01/02/03/04/05/06/10 完成；前端 Vol*/Org*/AdminAct/AdminNotice/Dashboard* 全部接真接口；auth/refresh 上线 ✅ |
 | **S4 申请+超管** | 第 5 天（2026-06-15 完成）| FR-08 超管账号管理 + FR-09 组织者资质申请审核 + 撤销组织者；前端 VolApplyOrg/AdminOrg/AdminOrgManage/SuperAdd/SuperDelete 全部接真 ✅ |
 | **S5 收尾** | 第 6 天（2026-06-16 完成）| 文件上传（FileController 防穿越）+ 证书 PDF（iText 7 + font-asian）+ 对外综测 API（白名单）+ DataSeeder 开关打开 + DEMO.md 答辩脚本 ✅ |
+| **S6 扩展功能** | 第 7 天（2026-06-21 完成）| **A3 双向评价**（`module/review` + 新表 `activity_reviews` + 志愿者评组织者 / 组织者评签退志愿者，UNIQUE 防重复）+ **A4 报表导出**（`module/report` + Apache POI 5.2.5 + 个人工时 xlsx / 活动签到汇总 xlsx / 月度全院汇总 xlsx）+ 前端 VolApplied/OrgManage/VolCert/AdminDash 接通 ✅ |
 
 ### 12.8 开发与协同约定
 
