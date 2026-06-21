@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// 志愿者 → 组织者的资质申请。审核通过会把 users.is_organizer 置 true
 @Service
 @RequiredArgsConstructor
 public class OrganizerApplicationService {
@@ -60,11 +61,17 @@ public class OrganizerApplicationService {
     public PageResult<ApplicationVO> list(Long page, Long size, String status, String name, String userNo) {
         LambdaQueryWrapper<OrganizerApplication> qw = new LambdaQueryWrapper<>();
         if (status != null && !status.isBlank()) qw.eq(OrganizerApplication::getAuditStatus, status);
-        if (name != null && !name.isBlank() || userNo != null && !userNo.isBlank()) {
-            qw.inSql(OrganizerApplication::getApplicantId,
-                    "SELECT user_id FROM users WHERE 1=1"
-                    + (name != null && !name.isBlank() ? " AND name LIKE '%" + name + "%'" : "")
-                    + (userNo != null && !userNo.isBlank() ? " AND username LIKE '%" + userNo.replaceFirst("^(SUP|ADM|ORG|VOL)-", "") + "%'" : ""));
+        boolean hasName = name != null && !name.isBlank();
+        boolean hasUserNo = userNo != null && !userNo.isBlank();
+        if (hasName || hasUserNo) {
+            LambdaQueryWrapper<User> uqw = new LambdaQueryWrapper<User>().select(User::getUserId);
+            if (hasName) uqw.like(User::getName, name);
+            if (hasUserNo) uqw.like(User::getUsername, userNo.replaceFirst("^(SUP|ADM|ORG|VOL)-", ""));
+            List<Long> userIds = userMapper.selectList(uqw).stream().map(User::getUserId).toList();
+            if (userIds.isEmpty()) {
+                return PageResult.of(0L, List.of());
+            }
+            qw.in(OrganizerApplication::getApplicantId, userIds);
         }
         qw.orderByAsc(OrganizerApplication::getAuditStatus)
           .orderByDesc(OrganizerApplication::getSubmittedAt);
@@ -82,6 +89,7 @@ public class OrganizerApplicationService {
         return PageResult.of(result.getTotal(), toVOs(result.getRecords()));
     }
 
+    // 管理员审申请，通过的话顺手给用户开 organizer 资质
     @Transactional
     public void audit(Long appId, Long auditorId, boolean approve) {
         OrganizerApplication app = appMapper.selectById(appId);

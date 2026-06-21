@@ -32,6 +32,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+// 签到/志愿时这块是核心副作用集中地：
+//   - 改工时 → 联动 certificates（>0 复活/发证，=0 失效）
+//   - 补签 → 顺便发个证
+// 改这俩方法之前先想清楚证书的状态机别打乱了
 @Service
 @RequiredArgsConstructor
 public class AttendanceService {
@@ -62,7 +66,8 @@ public class AttendanceService {
         Attendance att = attendanceMapper.selectById(recordId);
         if (att == null) throw new BizException(ErrorCode.NOT_FOUND, "签到记录不存在");
         Activity a = activityMapper.selectById(att.getActivityId());
-        if (!isAdmin && (a == null || !a.getOrganizerId().equals(currentUserId))) {
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (!isAdmin && !a.getOrganizerId().equals(currentUserId)) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权修改他人活动志愿时");
         }
         // 校验工时不能为负数
@@ -84,7 +89,8 @@ public class AttendanceService {
         att.setServiceMinutes(req.getMinutes());
         attendanceMapper.updateById(att);
 
-        // 联动证书：>0 → 自动发证/复活；=0 → 失效已发证书
+        // 联动证书：>0 → 自动发证/复活；=0 → 失效已发证书。
+        // 这段如果以后还要在别的地方用，得抽出来，不然 manualSign 那边就重复了
         boolean hasHours = req.getHours() > 0 || req.getMinutes() > 0;
         Certificate cert = findCert(att.getActivityId(), att.getVolunteerId());
         if (hasHours) {
@@ -113,6 +119,7 @@ public class AttendanceService {
             certificateMapper.updateById(cert);
         }
 
+        // vol 这里其实没用上，留着是因为想拼姓名进通知正文又懒得改文案……回头看心情
         User vol = userService.findById(att.getVolunteerId());
         messageService.sendDirect(att.getVolunteerId(), MsgType.ACTIVITY_NOTICE,
                 "志愿时已更新 - " + a.getTitle(),
@@ -122,6 +129,7 @@ public class AttendanceService {
                 "volunteer");
     }
 
+    // 漏签退/异常时组织者手动补一刀，时间和工时都自己填
     @Transactional
     public void manualSign(Long recordId, Long currentUserId, boolean isAdmin, ManualSignRequest req) {
         if (req.getMinutes() < 0 || req.getMinutes() > 59 || req.getHours() < 0) {
@@ -133,7 +141,8 @@ public class AttendanceService {
         Attendance att = attendanceMapper.selectById(recordId);
         if (att == null) throw new BizException(ErrorCode.NOT_FOUND, "签到记录不存在");
         Activity a = activityMapper.selectById(att.getActivityId());
-        if (!isAdmin && (a == null || !a.getOrganizerId().equals(currentUserId))) {
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (!isAdmin && !a.getOrganizerId().equals(currentUserId)) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权操作他人活动签到");
         }
         // 校验工时不能超过活动总时长
@@ -151,13 +160,13 @@ public class AttendanceService {
         att.setStatus(AttendStatus.CHECKED_OUT);
         attendanceMapper.updateById(att);
 
-        // 补签后若工时 > 0，发/续证书
+        // 补签如果有工时就顺便发/续证书
+        // 这段几乎是 updateHours 那边的复制粘贴，看着挺脏的，下次重构抽个 issueCert 私有方法
         boolean hasHours = req.getHours() > 0 || req.getMinutes() > 0;
         if (hasHours) {
             HoursRequest hr = new HoursRequest();
             hr.setHours(req.getHours());
             hr.setMinutes(req.getMinutes());
-            // 复用上面的发证逻辑：直接 inline
             Certificate cert = findCert(att.getActivityId(), att.getVolunteerId());
             if (cert == null) {
                 cert = new Certificate();
@@ -193,6 +202,8 @@ public class AttendanceService {
         return certificateMapper.selectOne(qw);
     }
 
+    // entity → VO，顺便把活动名和志愿者编号都填上
+    // TODO 这俩 for 是 N 次 selectById，要是分页页数大可以改 selectBatchIds，目前 pageSize≤500 凑合够用
     private List<AttendanceVO> toVOs(List<Attendance> list) {
         if (list.isEmpty()) return List.of();
         List<Long> activityIds = list.stream().map(Attendance::getActivityId).distinct().toList();
@@ -228,7 +239,7 @@ public class AttendanceService {
         }).collect(Collectors.toList());
     }
 
-    /** 前端用 '正常' 标识，其它原状态返回原值 */
+    // DB 里写"已签退"，前端列表里更喜欢"正常"两个字，其它状态原样透传
     private String toSignStatus(String dbStatus) {
         return AttendStatus.CHECKED_OUT.equals(dbStatus) ? "正常" : dbStatus;
     }

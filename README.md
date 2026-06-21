@@ -46,14 +46,14 @@ spring:
     password: 123456   # ← 改成你自己的 MySQL root 密码
 ```
 
-## 三、启动后端（端口 8080）
+## 三、启动后端（端口 8081）
 
 ```bash
 cd backend
 mvn -DskipTests spring-boot:run
 ```
-启动成功后访问 <http://localhost:8080/api/health/db>，应返回 `{"code":0,"data":230}` 左右。
-接口文档（Swagger）：<http://localhost:8080/swagger-ui/index.html>
+启动成功后访问 <http://localhost:8081/api/health/db>，应返回 `{"code":0,"data":230}` 左右。
+接口文档（Swagger）：<http://localhost:8081/swagger-ui/index.html>
 
 > **国内下载依赖慢 / 报"程序包不存在"？** 在 `C:\Users\你\.m2\settings.xml` 加阿里云镜像：
 > ```xml
@@ -63,7 +63,7 @@ mvn -DskipTests spring-boot:run
 > </mirror></mirrors></settings>
 > ```
 
-## 四、启动前端（端口 8081）
+## 四、启动前端（端口 8080）
 
 ```bash
 # 回到仓库根目录
@@ -71,7 +71,7 @@ npm config set registry https://registry.npmmirror.com   # 可选，国内加速
 npm install
 npm run serve
 ```
-浏览器打开 <http://localhost:8081>。前端 axios 直连 `http://localhost:8080/api`（后端已开 CORS，无需配代理）。
+浏览器打开 <http://localhost:8080>。前端 axios 直连 `http://localhost:8081/api`（后端已开 CORS，无需配代理）。
 
 ---
 
