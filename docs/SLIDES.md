@@ -60,7 +60,7 @@
 
 ---
 
-## 第 5 页：需求分析 · 10+2 功能模块
+## 第 5 页：需求分析 · 10+1 功能模块
 
 | 编号 | 模块 | 参与者 |
 |---|---|---|
@@ -68,12 +68,11 @@
 | FR-08 | 超管账号管理 | 超管 |
 | FR-09 | 组织者申请与审核 | 志愿者 + 管理员 |
 | FR-10 | 消息与公告 | 全体 |
-| **FR-11**（S6 扩展） | **活动双向评价** | 志愿者 + 组织者 |
-| **FR-12**（S6 扩展） | **报表 Excel 导出** | 三角色 |
+| **FR-11**（S6 扩展） | **报表 Excel 导出** | 三角色 |
 
 - 数据规模指标：≥200 用户 / ≥100 活动 / ≥2000 报名+签到（演示种子已就绪）
 
-> 视觉：表格 + S6 两行用 **加粗 + 黄底** 突出"我们做的扩展"。
+> 视觉：表格 + S6 这行用 **加粗 + 黄底** 突出"我们做的扩展"。
 
 ---
 
@@ -130,15 +129,14 @@ users (1) ─── (N) attendance             [volunteer_id]
 users (1) ─── (N) certificates           [volunteer_id]
 users (1) ─── (N) messages               [receiver_id]
 users (1) ─── (N) organizer_applications [applicant_id / auditor_id]
-users (1) ─── (N) activity_reviews       [reviewer_id / target_id]  ← S6
-activities (1) ─── (N) registrations / attendance / certificates / activity_reviews
+activities (1) ─── (N) registrations / attendance / certificates
 ```
 
-- **8 张表**（S6 新增 activity_reviews）
+- **7 张表**
 - 状态字段统一 `varchar(20)` 存中文枚举（如"待审核""审核通过"），不用 MySQL ENUM 类型——便于阅读和扩展
 
 > 视觉：把这段 ASCII 图画成正式 ER 图（PowerDesigner / DataGrip 都能导出）。
-> 讲稿（45 秒）：先指 users 是中心节点，再讲 activities 是另一个枢纽，最后说 reviews 是双向 FK 同表自连。
+> 讲稿（45 秒）：先指 users 是中心节点，再讲 activities 是另一个枢纽，最后强调外键 / UNIQUE 约束设计。
 
 ---
 
@@ -155,9 +153,6 @@ activities (1) ─── (N) registrations / attendance / certificates / activit
 
 ### certificates（证书）
 `status: 有效/已失效` —— 由 AttendanceService 副作用驱动
-
-### activity_reviews（S6 评价）
-`UNIQUE(activity_id, reviewer_id, target_id)` 防重复评 + `CHECK(rating 1~5)`
 
 > 视觉：每张表用一个圆角矩形，关键字段加粗，外键画红色虚线。
 
@@ -176,7 +171,7 @@ activities (1) ─── (N) registrations / attendance / certificates / activit
     ↓
 组织者改工时 / 手动补签 → 证书自动 upsert 或失效
     ↓
-志愿者下载 PDF 证书 + 评价活动
+志愿者下载 PDF 证书 + 导出工时报表
     ↓
 综测系统通过 /api/public/hours 取累计工时
 ```
@@ -243,30 +238,7 @@ messageService.sendDirect(volunteerId, ...);           // 同时发消息通知
 
 ---
 
-## 第 14 页：S6 创新点 ① 双向评价
-
-- **谁能评谁**：
-  - 志愿者只能评：自己已签退活动的组织者
-  - 组织者只能评：自己活动里已签退的志愿者
-- **防重复**：DB `UNIQUE(activity_id, reviewer_id, target_id)` 三元组
-- **role 字段后端推断**：`reviewerId == activity.organizerId` 自动判断
-- 接口：5 个 REST（提交 / 我评的 / 评我的 / 活动评价 / 平均分聚合）
-
-```java
-// 服务端逻辑（节选）
-boolean reviewerIsOrganizer = a.getOrganizerId().equals(reviewerId);
-if (reviewerIsOrganizer) {
-    // 必须有 target 在我这活动的签退记录
-} else {
-    // target 必须就是这场活动的 organizer + 我自己签退过
-}
-```
-
-> 视觉：前端弹窗截图（el-rate 5 星 + 评语）+ 后端校验流程图。
-
----
-
-## 第 15 页：S6 创新点 ② Excel 报表导出
+## 第 14 页：S6 创新点 ① Excel 报表导出
 
 - 3 个端点，共享 `ResponseEntity<ByteArrayResource>` xlsx 流：
 
@@ -284,7 +256,7 @@ if (reviewerIsOrganizer) {
 
 ---
 
-## 第 16 页：S6 创新点 ③ 对外开放接口
+## 第 15 页：S6 创新点 ② 对外开放接口
 
 ```bash
 curl http://localhost:8081/api/public/hours?studentId=202400040101
@@ -312,7 +284,7 @@ curl http://localhost:8081/api/public/hours?studentId=202400040101
 
 ---
 
-## 第 17 页：S6 创新点 ④ 现代化技术栈实战
+## 第 16 页：S6 创新点 ③ 现代化技术栈实战
 
 - **中文 PDF 零外部依赖**：iText 7 + font-asian 的 `STSong-Light` 内置 CJK 字体，部署不用带 TTF
 - **种子数据自动灌**：`vms.seed.bulk: true` 启动时灌 ≥230 用户 / ≥100 活动 / ≥2200 报名签到（撑 SRS §8.2 数据规模指标）
@@ -325,7 +297,7 @@ curl http://localhost:8081/api/public/hours?studentId=202400040101
 
 ---
 
-## 第 18 页：现场演示流程（4 分钟）
+## 第 17 页：现场演示流程（4 分钟）
 
 > 提前把 4 个浏览器窗口（Chrome 无痕） 排好：超管 / 管理员 / 组织者+志愿者双身份 / 普通志愿者
 
@@ -336,18 +308,19 @@ curl http://localhost:8081/api/public/hours?studentId=202400040101
 | 30s | 志愿者报名 → 组织者审核 → 自动建 attendance | FR-02 副作用 |
 | 30s | 组织者手动补签 → 证书自动出现 | FR-03/04/05 联动 |
 | 30s | 把工时改 0 → 证书右上角变灰（已失效） | 工时-证书双向 |
-| 30s | 志愿者下载 PDF 证书 → 评价活动 | FR-11 |
-| 30s | 管理员选 6 月 → 导出月度汇总 Excel | FR-12 |
+| 30s | 志愿者下载 PDF 证书 → 导出个人工时 Excel | FR-05 / FR-11 |
+| 30s | 组织者一键导出活动签到汇总 Excel | FR-11 |
+| 30s | 管理员选 6 月 → 导出月度汇总 Excel | FR-11 |
 | 30s | curl 调 `/api/public/hours` 拿累计工时 | 对外接口 |
 
 > 演示 Tips：
 > - 演示前把"导出 Excel"和"PDF 下载"提前点过一次，确保浏览器允许自动下载
 > - 准备一个 fallback 视频（手机录屏），万一现场网络不行直接放
-> - 评价那一步可以演示"重复评价被后端拒绝"作为加分项
+> - 工时改 0 演示证书失效是亮点动作，节奏放慢一点让评委看清
 
 ---
 
-## 第 19 页：测试
+## 第 18 页：测试
 
 | 测试维度 | 方法 | 结果 |
 |---|---|---|
@@ -362,7 +335,7 @@ curl http://localhost:8081/api/public/hours?studentId=202400040101
 
 ---
 
-## 第 20 页：与 i志愿的对比（差异化总结）
+## 第 19 页：与 i志愿的对比（差异化总结）
 
 | 维度 | i志愿 | VMS |
 |---|---|---|
@@ -379,20 +352,20 @@ curl http://localhost:8081/api/public/hours?studentId=202400040101
 
 ---
 
-## 第 21 页：开发统计
+## 第 20 页：开发统计
 
 - **代码量**（粗略）：
   - 后端 Java：~70 个 .java 文件，约 6000 行
   - 前端 Vue/JS：~50 个文件，约 7000 行
   - SQL：8 张表 DDL + 演示种子约 500 行
-- **里程碑**：S1 骨架 → S2 鉴权 → S3 核心业务 → S4 超管+申请 → S5 上传+PDF+对外接口 → **S6 评价+报表**
+- **里程碑**：S1 骨架 → S2 鉴权 → S3 核心业务 → S4 超管+申请 → S5 上传+PDF+对外接口 → **S6 报表导出**
 - **协作**：前端骨架 + 后端实现 + 文档双线
 
 > 视觉：横向时间轴，每个 S 节点标日期 + 关键交付物。
 
 ---
 
-## 第 22 页：项目展望
+## 第 21 页：项目展望
 
 - **A 类（短期可落地）**：
   - 信用分体系（迟到扣分 / 信用门槛影响报名优先级）
@@ -408,7 +381,7 @@ curl http://localhost:8081/api/public/hours?studentId=202400040101
 
 ---
 
-## 第 23 页：致谢
+## 第 22 页：致谢
 
 - 感谢 xxx 老师的指导
 - 感谢小组成员通力协作
@@ -418,7 +391,7 @@ curl http://localhost:8081/api/public/hours?studentId=202400040101
 
 ---
 
-## 第 24 页：Q&A
+## 第 23 页：Q&A
 
 > 准备常见追问：
 
@@ -435,17 +408,14 @@ A：dev 期 `allowedOriginPattern("*")` + `allowCredentials(true)` 方便调试�
 A：①表都加了索引；②MyBatis-Plus 内置分页；③公告实化策略可以改成"按 scope 查询"；④`attendance` 写多查少可上读写分离。
 
 **Q5：i志愿已经存在为什么还做？**
-A：定位是"校园本地化补充"而非替代，参见第 20 页对比。
+A：定位是"校园本地化补充"而非替代，参见第 19 页对比。
 
-**Q6：S6 评价模块有什么核心约束？**
-A：①UNIQUE 防重复；②必须已签退；③role 后端推断不信前端；④CHECK rating 1~5。
-
-**Q7：怎么保证组织者不会改自己审核的报名？**
+**Q6：怎么保证组织者不会改自己审核的报名？**
 A：报名审核的 organizerId 与 activity.organizer_id 必须匹配；Service 里 `mustOwn` 二次校验。
 
 ---
 
-## 第 25 页：封底
+## 第 24 页：封底
 
 ```
 谢 谢 聆 听
@@ -461,7 +431,7 @@ A：报名审核的 organizerId 与 activity.organizer_id 必须匹配；Service
 - 角色选择页（双身份切换）
 - 志愿者活动列表（含报名按钮）
 - 组织者活动管理（含两层状态 chip）
-- 组织者签到管理（含"评价"按钮）
+- 组织者签到管理（含"导出签到汇总"按钮）
 - 志愿者证书列表（含"已失效"灰色 chip）
 - PDF 证书实物（用浏览器打开放截图）
 - 月度报表 Excel 实物
@@ -475,11 +445,11 @@ A：报名审核的 organizerId 与 activity.organizer_id 必须匹配；Service
 | 开场（封面+目录+背景） | 1-3 | 1 分钟 |
 | 需求与设计 | 4-9 | 2 分钟 |
 | 关键实现 | 10-13 | 2 分钟 |
-| S6 创新点 | 14-17 | 2 分钟 |
-| 现场演示 | 18 | 4 分钟 |
-| 测试 & 对比 & 展望 | 19-22 | 1.5 分钟 |
-| 致谢 & Q&A | 23-25 | 5 分钟 |
-| **合计** | **25** | **17.5 分钟** |
+| S6 创新点 | 14-16 | 1.5 分钟 |
+| 现场演示 | 17 | 4 分钟 |
+| 测试 & 对比 & 展望 | 18-21 | 1.5 分钟 |
+| 致谢 & Q&A | 22-24 | 5 分钟 |
+| **合计** | **24** | **17 分钟** |
 
 ## 附录 C：避坑提醒
 

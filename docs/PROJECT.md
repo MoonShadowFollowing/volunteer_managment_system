@@ -113,8 +113,7 @@
 | **FR-08** | 超管账号管理 | 超管 | 添加/移除管理员（专属后台） |
 | **FR-09** | 组织者申请与审核 | 志愿者 + 管理员 | 申请理由+证明材料上传 → 审核通过/拒绝 → 资质移除 |
 | **FR-10** | 消息与公告管理 | 管理员 + 志愿者 + 组织者 | 管理员发公告（可选范围）+ 业务通知 |
-| **FR-11** | 活动评价（S6 扩展）| 志愿者 + 组织者 | 双向打分：志愿者评活动组织者；组织者评签退志愿者；1~5 星 + 评语 |
-| **FR-12** | 报表导出（S6 扩展）| 志愿者 + 组织者 + 管理员 | 个人工时 xlsx / 活动签到汇总 xlsx / 月度汇总 xlsx |
+| **FR-11** | 报表导出（S6 扩展）| 志愿者 + 组织者 + 管理员 | 个人工时 xlsx / 活动签到汇总 xlsx / 月度汇总 xlsx |
 
 ---
 
@@ -269,27 +268,7 @@
 
 **索引建议**：INDEX(applicant_id, audit_status)、INDEX(audit_status, submitted_at)。
 
-### 5.8 activity_reviews 活动评价表（S6 新增）
-
-| 字段 | 类型 | 长度 | PK | FK | NULL | 默认值 | 说明 |
-|---|---|---|---|---|---|---|---|
-| review_id | int | 11 | ✅ | | NOT NULL | AUTO_INCREMENT | |
-| activity_id | int | 11 | | ✅ | NOT NULL | - | → activities(activity_id) |
-| reviewer_id | int | 11 | | ✅ | NOT NULL | - | 评价人 → users(user_id) |
-| reviewer_role | varchar | 20 | | | NOT NULL | - | `volunteer` / `organizer` |
-| target_id | int | 11 | | ✅ | NOT NULL | - | 被评价人 → users(user_id) |
-| rating | int | - | | | NOT NULL | - | 1~5，DB 层 CHECK 约束 |
-| comment | varchar | 500 | | | NULL | - | 评语，可选 |
-| created_at | datetime | - | | | NOT NULL | CURRENT_TIMESTAMP | |
-
-**索引建议**：UNIQUE(activity_id, reviewer_id, target_id) 防重复评价；INDEX(target_id) 加速"我收到的"；INDEX(activity_id) 加速活动评价聚合。
-
-**业务规则**：
-- 志愿者只能评价自己 `attendance.status='已签退'` 的活动的组织者
-- 组织者只能评价自己活动里 `attendance.status='已签退'` 的志愿者
-- 同一 (activity_id, reviewer_id, target_id) 仅一条
-
-### 5.9 表间关系总览（ER 概览）
+### 5.8 表间关系总览（ER 概览）
 
 ```
 users (1) ─── (N) activities             [organizer_id]
@@ -298,12 +277,10 @@ users (1) ─── (N) attendance             [volunteer_id]
 users (1) ─── (N) certificates           [volunteer_id]
 users (1) ─── (N) messages               [receiver_id]
 users (1) ─── (N) organizer_applications [applicant_id / auditor_id]
-users (1) ─── (N) activity_reviews       [reviewer_id / target_id]
 
 activities (1) ─── (N) registrations
 activities (1) ─── (N) attendance
 activities (1) ─── (N) certificates
-activities (1) ─── (N) activity_reviews
 ```
 
 ---
@@ -542,11 +519,6 @@ volunteer_management_backend/
 | **对外 API** | GET `/api/public/hours?studentId=` | 综测系统按学号查累计工时（S5 ✅，白名单无须 JWT） | — |
 | **文件上传** | POST `/api/files/upload` | 单文件上传（≤5MB，jpg/png/gif/webp/pdf）→ 返回 `{url, filename, originalName, size}`（S5） | VolApplyOrg |
 | | GET `/api/files/static/**` | 公开访问上传过的文件（S5，白名单） | 申请记录"查看"链接 |
-| **活动评价**（S6）| POST `/api/reviews` | 提交评价（body: `{activityId, targetId, rating, comment}`，rating 1~5；DB UNIQUE 防重复；志愿者评组织者 / 组织者评签退志愿者） | VolApplied + OrgManage |
-| | GET `/api/reviews/mine` | 我提交过的评价分页 | — |
-| | GET `/api/reviews/received` | 我收到的评价分页 | — |
-| | GET `/api/reviews?activityId=` | 某活动下的全部评价（公开） | 活动详情可挂载 |
-| | GET `/api/reviews/summary?targetId=[&activityId=]` | 某人在某活动 / 全部活动的平均分 + 条数 | — |
 | **报表导出**（S6）| GET `/api/reports/personal-hours.xlsx[?volunteerId=]` | 个人工时 xlsx（本人或 admin），含合计行 | VolCert |
 | | GET `/api/reports/activity-summary.xlsx?activityId=` | 活动签到汇总 xlsx（组织者本人或 admin） | OrgManage |
 | | GET `/api/reports/monthly.xlsx?year=&month=` | 月度志愿工时汇总 xlsx（admin），按签退月份归集所有志愿者 | AdminDash |
@@ -592,7 +564,7 @@ volunteer_management_backend/
 | **S3 核心业务闭环** | 第 3~4 天（2026-06-15 完成）| FR-01/02/03/04/05/06/10 完成；前端 Vol*/Org*/AdminAct/AdminNotice/Dashboard* 全部接真接口；auth/refresh 上线 ✅ |
 | **S4 申请+超管** | 第 5 天（2026-06-15 完成）| FR-08 超管账号管理 + FR-09 组织者资质申请审核 + 撤销组织者；前端 VolApplyOrg/AdminOrg/AdminOrgManage/SuperAdd/SuperDelete 全部接真 ✅ |
 | **S5 收尾** | 第 6 天（2026-06-16 完成）| 文件上传（FileController 防穿越）+ 证书 PDF（iText 7 + font-asian）+ 对外综测 API（白名单）+ DataSeeder 开关打开 + DEMO.md 答辩脚本 ✅ |
-| **S6 扩展功能** | 第 7 天（2026-06-21 完成）| **A3 双向评价**（`module/review` + 新表 `activity_reviews` + 志愿者评组织者 / 组织者评签退志愿者，UNIQUE 防重复）+ **A4 报表导出**（`module/report` + Apache POI 5.2.5 + 个人工时 xlsx / 活动签到汇总 xlsx / 月度汇总 xlsx）+ 前端 VolApplied/OrgManage/VolCert/AdminDash 接通 ✅ |
+| **S6 扩展功能** | 第 7 天（2026-06-21 完成）| **报表导出**（`module/report` + Apache POI 5.2.5 + 个人工时 xlsx / 活动签到汇总 xlsx / 月度汇总 xlsx）+ 前端 VolCert / OrgManage / AdminDash 接通 ✅ |
 
 ### 12.8 开发与协同约定
 
