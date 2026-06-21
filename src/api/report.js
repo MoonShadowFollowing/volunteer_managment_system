@@ -25,7 +25,7 @@ export const downloadActivitySummaryXlsx = async (activityId) => {
   downloadBlob(blob, `VMS-Activity-${activityId}.xlsx`)
 }
 
-// 导出月度全院汇总 xlsx（admin）
+// 导出月度汇总 xlsx（admin）
 export const downloadMonthlyXlsx = async (year, month) => {
   const blob = await http.get('/reports/monthly.xlsx', { params: { year, month }, responseType: 'blob' })
   const mm = String(month).padStart(2, '0')

@@ -274,7 +274,7 @@ if (reviewerIsOrganizer) {
 |---|---|---|
 | `/api/reports/personal-hours.xlsx` | 本人或 admin | 个人工时表（带累计） |
 | `/api/reports/activity-summary.xlsx` | 组织者或 admin | 活动签到汇总 |
-| `/api/reports/monthly.xlsx?year=&month=` | admin | 月度全院按工时降序排行 |
+| `/api/reports/monthly.xlsx?year=&month=` | admin | 月度按工时降序排行（全部志愿者） |
 
 - 技术栈：**Apache POI 5.2.5 `XSSFWorkbook`**
 - 数据源：直接复用 `attendance` 表 + `selectBatchIds` 拼名字
@@ -337,7 +337,7 @@ curl http://localhost:8081/api/public/hours?studentId=202400040101
 | 30s | 组织者手动补签 → 证书自动出现 | FR-03/04/05 联动 |
 | 30s | 把工时改 0 → 证书右上角变灰（已失效） | 工时-证书双向 |
 | 30s | 志愿者下载 PDF 证书 → 评价活动 | FR-11 |
-| 30s | 管理员选 6 月 → 导出月度全院 Excel | FR-12 |
+| 30s | 管理员选 6 月 → 导出月度汇总 Excel | FR-12 |
 | 30s | curl 调 `/api/public/hours` 拿累计工时 | 对外接口 |
 
 > 演示 Tips：

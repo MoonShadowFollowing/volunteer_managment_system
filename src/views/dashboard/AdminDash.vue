@@ -1,7 +1,7 @@
 <template>
   <div v-loading="loading">
     <el-row :gutter="20" class="mb-20">
-      <el-col :span="6"><el-card shadow="hover">全校总活动数<br/><b style="font-size:24px;color:#e63946">{{ m.totalActivities || 0 }}</b></el-card></el-col>
+      <el-col :span="6"><el-card shadow="hover">总活动数<br/><b style="font-size:24px;color:#e63946">{{ m.totalActivities || 0 }}</b></el-card></el-col>
       <el-col :span="6"><el-card shadow="hover">注册志愿者<br/><b style="font-size:24px;color:#e63946">{{ m.totalVolunteers || 0 }}</b></el-card></el-col>
       <el-col :span="6"><el-card shadow="hover">累计认证工时(小时)<br/><b style="font-size:24px;color:#e63946">{{ m.totalServiceHours || 0 }}</b></el-card></el-col>
       <el-col :span="6"><el-card shadow="hover">已发证书<br/><b style="font-size:24px;color:#e63946">{{ m.totalCertificates || 0 }}</b></el-card></el-col>
@@ -21,10 +21,10 @@
           <el-input-number v-model="reportMonth" :min="1" :max="12" />
         </el-form-item>
         <el-form-item>
-          <el-button type="success" icon="Download" :loading="exporting" @click="exportMonthly">导出月度全院汇总 Excel</el-button>
+          <el-button type="success" icon="Download" :loading="exporting" @click="exportMonthly">导出月度汇总 Excel</el-button>
         </el-form-item>
       </el-form>
-      <p style="color:#909399;font-size:13px;margin:8px 0 0">将按签退月份统计全校志愿者参与活动数与累计工时，可用于行政归档与综测对接。</p>
+      <p style="color:#909399;font-size:13px;margin:8px 0 0">将按签退月份统计全部志愿者参与活动数与累计工时，可用于行政归档与综测对接。</p>
     </el-card>
   </div>
 </template>

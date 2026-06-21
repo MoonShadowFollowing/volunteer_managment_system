@@ -114,7 +114,7 @@
 | **FR-09** | 组织者申请与审核 | 志愿者 + 管理员 | 申请理由+证明材料上传 → 审核通过/拒绝 → 资质移除 |
 | **FR-10** | 消息与公告管理 | 管理员 + 志愿者 + 组织者 | 管理员发公告（可选范围）+ 业务通知 |
 | **FR-11** | 活动评价（S6 扩展）| 志愿者 + 组织者 | 双向打分：志愿者评活动组织者；组织者评签退志愿者；1~5 星 + 评语 |
-| **FR-12** | 报表导出（S6 扩展）| 志愿者 + 组织者 + 管理员 | 个人工时 xlsx / 活动签到汇总 xlsx / 月度全院汇总 xlsx |
+| **FR-12** | 报表导出（S6 扩展）| 志愿者 + 组织者 + 管理员 | 个人工时 xlsx / 活动签到汇总 xlsx / 月度汇总 xlsx |
 
 ---
 
@@ -549,7 +549,7 @@ volunteer_management_backend/
 | | GET `/api/reviews/summary?targetId=[&activityId=]` | 某人在某活动 / 全部活动的平均分 + 条数 | — |
 | **报表导出**（S6）| GET `/api/reports/personal-hours.xlsx[?volunteerId=]` | 个人工时 xlsx（本人或 admin），含合计行 | VolCert |
 | | GET `/api/reports/activity-summary.xlsx?activityId=` | 活动签到汇总 xlsx（组织者本人或 admin） | OrgManage |
-| | GET `/api/reports/monthly.xlsx?year=&month=` | 月度全院工时汇总 xlsx（admin），按签退月分组聚合 | AdminDash |
+| | GET `/api/reports/monthly.xlsx?year=&month=` | 月度志愿工时汇总 xlsx（admin），按签退月份归集所有志愿者 | AdminDash |
 
 ### 12.4.1 接口契约总览（S3 完工口径）
 
@@ -592,7 +592,7 @@ volunteer_management_backend/
 | **S3 核心业务闭环** | 第 3~4 天（2026-06-15 完成）| FR-01/02/03/04/05/06/10 完成；前端 Vol*/Org*/AdminAct/AdminNotice/Dashboard* 全部接真接口；auth/refresh 上线 ✅ |
 | **S4 申请+超管** | 第 5 天（2026-06-15 完成）| FR-08 超管账号管理 + FR-09 组织者资质申请审核 + 撤销组织者；前端 VolApplyOrg/AdminOrg/AdminOrgManage/SuperAdd/SuperDelete 全部接真 ✅ |
 | **S5 收尾** | 第 6 天（2026-06-16 完成）| 文件上传（FileController 防穿越）+ 证书 PDF（iText 7 + font-asian）+ 对外综测 API（白名单）+ DataSeeder 开关打开 + DEMO.md 答辩脚本 ✅ |
-| **S6 扩展功能** | 第 7 天（2026-06-21 完成）| **A3 双向评价**（`module/review` + 新表 `activity_reviews` + 志愿者评组织者 / 组织者评签退志愿者，UNIQUE 防重复）+ **A4 报表导出**（`module/report` + Apache POI 5.2.5 + 个人工时 xlsx / 活动签到汇总 xlsx / 月度全院汇总 xlsx）+ 前端 VolApplied/OrgManage/VolCert/AdminDash 接通 ✅ |
+| **S6 扩展功能** | 第 7 天（2026-06-21 完成）| **A3 双向评价**（`module/review` + 新表 `activity_reviews` + 志愿者评组织者 / 组织者评签退志愿者，UNIQUE 防重复）+ **A4 报表导出**（`module/report` + Apache POI 5.2.5 + 个人工时 xlsx / 活动签到汇总 xlsx / 月度汇总 xlsx）+ 前端 VolApplied/OrgManage/VolCert/AdminDash 接通 ✅ |
 
 ### 12.8 开发与协同约定
 

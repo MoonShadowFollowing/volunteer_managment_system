@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-// 三张报表：个人工时、活动签到汇总、月度全院汇总
+// 三张报表：个人工时、活动签到汇总、月度汇总
 // 一律只算 status=已签退 的记录，没签退的不进表
 @Slf4j
 @Service
@@ -189,7 +189,7 @@ public class ReportService {
         }
     }
 
-    // ---- 月度全院汇总 ----
+    // ---- 月度汇总 ----
     // admin 专属（Controller 那边卡了 @PreAuthorize），按签退月份归集
     public byte[] monthlyXlsx(int year, int month) {
         List<Row3> rows = aggregateMonthly(year, month);
@@ -204,7 +204,7 @@ public class ReportService {
 
             Row r0 = sheet.createRow(0);
             Cell c0 = r0.createCell(0);
-            c0.setCellValue(year + " 年 " + month + " 月 全院志愿工时月度汇总");
+            c0.setCellValue(year + " 年 " + month + " 月 志愿工时月度汇总");
             c0.setCellStyle(title);
             sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 5));
 

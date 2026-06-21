@@ -52,7 +52,7 @@ public class ReportController {
         return xlsxResponse(data, "VMS-Activity-" + activityId + ".xlsx");
     }
 
-    @Operation(summary = "月度全院汇总表")
+    @Operation(summary = "月度汇总表")
     @GetMapping("/monthly.xlsx")
     @PreAuthorize("hasAuthority('ADM')")
     public ResponseEntity<ByteArrayResource> monthlyXlsx(
