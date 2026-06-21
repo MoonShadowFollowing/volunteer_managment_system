@@ -1,7 +1,7 @@
 -- =====================================================================
--- VMS 志愿服务工时认证与活动管理系统 — 数据库表结构
--- 对齐《VMS 数据表设计.docx》与《PROJECT.md §5》
--- MySQL 8.0 + utf8mb4_unicode_ci
+-- 数据库 schema：8 张表
+-- 都用 IF NOT EXISTS，Spring Boot 启动时反复跑也不会爆
+-- 状态字段都存中文枚举值，方便直接看，约束在应用层 + DB CHECK 共同保证
 -- =====================================================================
 
 -- -----------------------------------------------------
@@ -142,3 +142,27 @@ CREATE TABLE IF NOT EXISTS organizer_applications (
     CONSTRAINT fk_app_applicant FOREIGN KEY (applicant_id) REFERENCES users (user_id),
     CONSTRAINT fk_app_auditor FOREIGN KEY (auditor_id) REFERENCES users (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='组织者资质申请表';
+
+-- -----------------------------------------------------
+-- 表 8: activity_reviews 活动评价（S6 新加的）
+-- 双向打分：志愿者评组织者 / 组织者评签退志愿者
+-- 防重复全靠那个 UNIQUE 三元组
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS activity_reviews (
+    review_id      INT          NOT NULL AUTO_INCREMENT COMMENT '评价编号',
+    activity_id    INT          NOT NULL                COMMENT 'FK→activities',
+    reviewer_id    INT          NOT NULL                COMMENT '评价人 FK→users',
+    reviewer_role  VARCHAR(20)  NOT NULL                COMMENT 'volunteer/organizer',
+    target_id      INT          NOT NULL                COMMENT '被评价人 FK→users',
+    rating         INT          NOT NULL                COMMENT '评分 1~5',
+    comment        VARCHAR(500) NULL                    COMMENT '评语，可空',
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (review_id),
+    UNIQUE KEY uk_review_act_rev_tgt (activity_id, reviewer_id, target_id),
+    KEY idx_review_target (target_id),
+    KEY idx_review_activity (activity_id),
+    CONSTRAINT fk_review_activity FOREIGN KEY (activity_id) REFERENCES activities (activity_id),
+    CONSTRAINT fk_review_reviewer FOREIGN KEY (reviewer_id) REFERENCES users (user_id),
+    CONSTRAINT fk_review_target    FOREIGN KEY (target_id)   REFERENCES users (user_id),
+    CONSTRAINT ck_review_rating    CHECK (rating BETWEEN 1 AND 5)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='活动评价表';

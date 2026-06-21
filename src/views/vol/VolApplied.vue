@@ -47,10 +47,11 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="操作" width="200" align="center">
+          <el-table-column label="操作" width="280" align="center">
             <template #default="scope">
               <el-button type="primary" link @click="goDetail(scope.row)">查看活动详情</el-button>
               <el-button type="danger" link v-if="scope.row.auditStatus==='待审核'" @click="handleCancel(scope.row)">取消报名</el-button>
+              <el-button type="success" link v-if="canReview(scope.row)" @click="openReviewDialog(scope.row)">评价活动</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -109,6 +110,31 @@
       </el-card>
     </div>
 
+    <!-- 评价活动弹窗 -->
+    <el-dialog v-model="reviewDialogVisible" title="评价活动组织者" width="480px">
+      <div v-if="reviewTarget" style="margin-bottom: 16px; color:#606266; font-size: 13px;">
+        活动：<strong>{{ reviewTarget.activityName }}</strong>
+      </div>
+      <el-form label-width="80px">
+        <el-form-item label="评分">
+          <el-rate v-model="reviewForm.rating" :max="5" show-score />
+        </el-form-item>
+        <el-form-item label="评语">
+          <el-input
+            v-model="reviewForm.comment"
+            type="textarea"
+            :rows="4"
+            maxlength="500"
+            show-word-limit
+            placeholder="可填写您对活动组织的反馈（可选）"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reviewDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="reviewSaving" @click="confirmReview">提交评价</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -116,6 +142,8 @@
 import { onMounted, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { myRegistrations, cancelRegistration } from '../../api/registration'
+import { getActivity } from '../../api/activity'
+import { submitReview } from '../../api/review'
 
 const queryName = ref('')
 const queryStatus = ref('')
@@ -171,6 +199,47 @@ const handleCancel = (row) => {
       await loadData()
     })
     .catch(() => {})
+}
+
+/* === 活动评价（A3） === */
+const canReview = (row) =>
+  row.auditStatus === '审核通过' && !!row.checkOutTime
+
+const reviewDialogVisible = ref(false)
+const reviewSaving = ref(false)
+const reviewTarget = ref(null)
+const reviewForm = ref({ rating: 5, comment: '' })
+
+const openReviewDialog = async (row) => {
+  reviewTarget.value = row
+  reviewForm.value = { rating: 5, comment: '' }
+  reviewDialogVisible.value = true
+}
+
+const confirmReview = async () => {
+  if (!reviewTarget.value) return
+  if (!reviewForm.value.rating || reviewForm.value.rating < 1) {
+    ElMessage.warning('请先给出 1~5 星评分')
+    return
+  }
+  reviewSaving.value = true
+  try {
+    const act = await getActivity(reviewTarget.value.activityId)
+    if (!act || !act.organizerId) {
+      ElMessage.error('无法获取活动组织者信息')
+      return
+    }
+    await submitReview({
+      activityId: reviewTarget.value.activityId,
+      targetId: act.organizerId,
+      rating: reviewForm.value.rating,
+      comment: reviewForm.value.comment || ''
+    })
+    ElMessage.success('评价已提交，感谢您的反馈')
+    reviewDialogVisible.value = false
+  } catch (_) { /* 拦截器已提示 */ } finally {
+    reviewSaving.value = false
+  }
 }
 </script>
 

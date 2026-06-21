@@ -80,6 +80,7 @@
         <template #header>
           <el-button icon="ArrowLeft" @click="exitManage" style="margin-right: 15px">返回活动列表</el-button>
           <strong style="font-size: 16px;">当前管理活动：{{ currentActivity.name }}</strong>
+          <el-button type="success" icon="Download" size="small" style="float: right" @click="exportActivitySummary">导出签到汇总 Excel</el-button>
         </template>
 
         <el-tabs v-model="activeTab">
@@ -146,10 +147,11 @@
                 </template>
               </el-table-column>
 
-              <el-table-column label="操作" width="200" align="center">
+              <el-table-column label="操作" width="280" align="center">
                 <template #default="scope">
                   <el-button v-if="scope.row.signStatus!=='正常'" type="warning" size="small" @click="openSignDialog(scope.row)">手动补签</el-button>
                   <el-button v-else type="primary" size="small" @click="openHourDialog(scope.row)">修改志愿时</el-button>
+                  <el-button v-if="scope.row.signStatus==='正常'" type="success" size="small" @click="openReviewDialog(scope.row)">评价</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -188,6 +190,33 @@
       <template #footer>
         <el-button @click="hourDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="confirmHourChange">确认修改</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 评价志愿者弹窗（A3） -->
+    <el-dialog v-model="reviewDialogVisible" title="评价志愿者" width="480px">
+      <div v-if="reviewTarget" style="margin-bottom: 16px; color:#606266; font-size: 13px;">
+        志愿者：<strong>{{ reviewTarget.volName }}</strong>
+        ｜ 活动：<strong>{{ currentActivity?.name }}</strong>
+      </div>
+      <el-form label-width="80px">
+        <el-form-item label="评分">
+          <el-rate v-model="reviewForm.rating" :max="5" show-score />
+        </el-form-item>
+        <el-form-item label="评语">
+          <el-input
+            v-model="reviewForm.comment"
+            type="textarea"
+            :rows="4"
+            maxlength="500"
+            show-word-limit
+            placeholder="可填写您对志愿者表现的反馈（可选）"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reviewDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="reviewSaving" @click="confirmReview">提交评价</el-button>
       </template>
     </el-dialog>
 
@@ -245,6 +274,8 @@ import { ElMessage } from 'element-plus'
 import { listActivities } from '../../api/activity'
 import { listRegistrations, auditRegistration } from '../../api/registration'
 import { listAttendance, updateHours, manualSign } from '../../api/attendance'
+import { submitReview } from '../../api/review'
+import { downloadActivitySummaryXlsx } from '../../api/report'
 
 const myId = Number(localStorage.getItem('userId')) || undefined
 
@@ -566,6 +597,47 @@ const confirmSign = async () => {
     await loadAtts()
   } catch (e) { /* 拦截器已提示 */ } finally {
     saving.value = false
+  }
+}
+
+/* === 评价志愿者（A3） === */
+const reviewDialogVisible = ref(false)
+const reviewSaving = ref(false)
+const reviewTarget = ref(null)
+const reviewForm = ref({ rating: 5, comment: '' })
+
+const openReviewDialog = (row) => {
+  reviewTarget.value = row
+  reviewForm.value = { rating: 5, comment: '' }
+  reviewDialogVisible.value = true
+}
+
+const exportActivitySummary = async () => {
+  if (!currentActivity.value) return
+  try {
+    await downloadActivitySummaryXlsx(currentActivity.value.activityId)
+    ElMessage.success('签到汇总已导出')
+  } catch (_) { /* 拦截器已提示 */ }
+}
+
+const confirmReview = async () => {
+  if (!reviewTarget.value || !currentActivity.value) return
+  if (!reviewForm.value.rating || reviewForm.value.rating < 1) {
+    ElMessage.warning('请先给出 1~5 星评分')
+    return
+  }
+  reviewSaving.value = true
+  try {
+    await submitReview({
+      activityId: currentActivity.value.activityId,
+      targetId: reviewTarget.value.volunteerId,
+      rating: reviewForm.value.rating,
+      comment: reviewForm.value.comment || ''
+    })
+    ElMessage.success('评价已提交')
+    reviewDialogVisible.value = false
+  } catch (_) { /* 拦截器已提示 */ } finally {
+    reviewSaving.value = false
   }
 }
 </script>
