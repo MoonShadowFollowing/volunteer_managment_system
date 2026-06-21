@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+// 登录 + 拉用户信息 + 刷 token
+// me() 和 refresh() 都会从 DB 重查一次，因为组织者/管理员资格可能被超管改过
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -23,6 +25,7 @@ public class AuthService {
 
     public LoginResponse login(LoginRequest req) {
         User user = userService.findByUsername(req.getAccount());
+        // 密码是 BCrypt 散列过的，用 PasswordEncoder.matches 验
         if (user == null || !passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new BizException(ErrorCode.INVALID_CREDENTIALS, "用户名或密码错误");
         }
@@ -31,13 +34,14 @@ public class AuthService {
         return new LoginResponse(token, toUserInfo(p));
     }
 
+    // 每次都重查，不信 JWT 里的 org/adm，防止资格被撤销后客户端还在用旧 token 越权
     public UserInfo me(UserPrincipal p) {
-        // 拉一次最新用户信息：双身份资格可能在会话中被管理员改过
         User u = userService.findById(p.userId());
         if (u == null) throw new BizException(ErrorCode.UNAUTHORIZED, "用户不存在");
         return toUserInfo(toPrincipal(u));
     }
 
+    // 刷 token 也走重查；前端 403 自动同步流程就靠这个
     public String refresh(UserPrincipal p) {
         User u = userService.findById(p.userId());
         if (u == null) throw new BizException(ErrorCode.UNAUTHORIZED, "用户不存在");

@@ -21,6 +21,7 @@
 </template>
 
 <script setup>
+// 组织者首页：我发了多少活动 + 发布中数 + 待审报名数
 import { onMounted, ref } from 'vue'
 import { dashboard } from '../../api/stat'
 

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-@Tag(name = "Registration", description = "活动报名 FR-02")
+@Tag(name = "Registration", description = "活动报名")
 @RestController
 @RequestMapping("/api/registrations")
 @RequiredArgsConstructor
@@ -24,7 +24,7 @@ public class RegistrationController {
 
     private final RegistrationService registrationService;
 
-    @Operation(summary = "志愿者报名")
+    @Operation(summary = "报名一个活动")
     @PostMapping
     public Result<Map<String, Long>> apply(@AuthenticationPrincipal UserPrincipal me,
                                            @Valid @RequestBody RegisterRequest req) {
@@ -32,7 +32,7 @@ public class RegistrationController {
         return Result.ok(Map.of("regId", regId));
     }
 
-    @Operation(summary = "志愿者：我的报名记录")
+    @Operation(summary = "我报过的活动")
     @GetMapping("/mine")
     public Result<PageResult<RegistrationVO>> mine(
             @AuthenticationPrincipal UserPrincipal me,
@@ -42,14 +42,15 @@ public class RegistrationController {
         return Result.ok(registrationService.mine(me.userId(), page, pageSize, auditStatus));
     }
 
-    @Operation(summary = "志愿者取消报名")
+    // 仅"待审核"状态可取消，审核过的就别想撤销了
+    @Operation(summary = "取消我的报名")
     @DeleteMapping("/{regId}")
     public Result<Void> cancel(@AuthenticationPrincipal UserPrincipal me, @PathVariable Long regId) {
         registrationService.cancel(regId, me.userId());
         return Result.ok();
     }
 
-    @Operation(summary = "组织者：查看活动的报名列表")
+    @Operation(summary = "活动报名列表（给组织者看）")
     @GetMapping
     @PreAuthorize("hasAuthority('ORG') or hasAuthority('ADM')")
     public Result<PageResult<RegistrationVO>> byActivity(
@@ -59,7 +60,8 @@ public class RegistrationController {
         return Result.ok(registrationService.byActivity(activityId, page, pageSize));
     }
 
-    @Operation(summary = "组织者审核报名")
+    // 通过会自动建 attendance + 给双方发通知
+    @Operation(summary = "审核报名")
     @PutMapping("/{regId}/audit")
     @PreAuthorize("hasAuthority('ORG') or hasAuthority('ADM')")
     public Result<Void> audit(@AuthenticationPrincipal UserPrincipal me,

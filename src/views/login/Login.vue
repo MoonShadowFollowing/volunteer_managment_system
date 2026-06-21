@@ -30,7 +30,8 @@ const handleLogin = async () => {
   submitting.value = true
   try {
     const data = await loginApi(loginForm.value.account.trim(), loginForm.value.password)
-    // data = { token, user: { userId, username, name, role, isOrganizerQualified, isAdmin } }
+    // 后端返的是 { token, user: { userId, username, name, role, isOrganizerQualified, isAdmin } }
+    // 全塞 localStorage——后续路由守卫和 axios 拦截器都靠这些
     const { token, user } = data
     localStorage.setItem('token', token)
     localStorage.setItem('isLoggedIn', 'true')
@@ -42,15 +43,14 @@ const handleLogin = async () => {
     localStorage.setItem('userId', String(user.userId))
 
     ElMessage.success(`欢迎，${user.name}`)
-    // 超级管理员保持原有行为，直接进入管理后台
+    // 超管不用选角色，直接进它的专属后台；其它人都走角色选择页
     if (user.role === 'superadmin') {
       router.push('/sys/super-add')
     } else {
-      // 普通管理员、志愿者、组织者 → 统一进入角色选择页，由用户自行选择以何种身份进入系统
       router.push('/role-select')
     }
   } catch (e) {
-    // 拦截器已弹 Message
+    // 拦截器已经 ElMessage 弹过了，这里不用再处理
   } finally {
     submitting.value = false
   }

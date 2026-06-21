@@ -49,6 +49,7 @@
 </template>
 
 <script setup>
+// 撤销管理员；后端会把 role 降回 volunteer，is_admin 置 false。超管自己不能被撤
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { admins, revokeAdmin } from '../../api/user'

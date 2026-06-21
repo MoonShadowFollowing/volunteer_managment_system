@@ -24,6 +24,7 @@
 </template>
 
 <script setup>
+// 志愿者首页：累计工时 + 证书数 + 已通过报名数。后端按角色返不同 metrics
 import { onMounted, ref } from 'vue'
 import { dashboard } from '../../api/stat'
 

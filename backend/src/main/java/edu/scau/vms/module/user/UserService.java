@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+// 用户相关查询 + 超管对管理员的提升/撤销 + 组织者资质撤销
+// 三档身份是分层包含的：管理员 ⊇ 组织者 ⊇ 志愿者
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -65,7 +67,7 @@ public class UserService {
         return PageResult.of(result.getTotal(), result.getRecords().stream().map(this::toVO).toList());
     }
 
-    /** 已通过组织者列表（is_organizer=true 且 role != superadmin），含已发布活动数 */
+    // 已通过组织者列表，顺手算上每个人发过几个活动
     public PageResult<UserSummaryVO> organizers(Long page, Long size, String name, String userNo) {
         LambdaQueryWrapper<User> qw = new LambdaQueryWrapper<>();
         qw.eq(User::getIsOrganizer, true)
@@ -130,7 +132,8 @@ public class UserService {
                 "volunteer");
     }
 
-    /** 撤销组织者资质 */
+    // 撤销组织者资质
+    // 注意：管理员自带组织者，不能单独撤——要先把管理员降下来
     @Transactional
     public void revokeOrganizer(Long userId) {
         User u = userMapper.selectById(userId);
@@ -165,17 +168,18 @@ public class UserService {
                 .build();
     }
 
+    // 展示编号：身份前缀 + 学号，SUP/ADM/ORG/VOL 一眼分清谁是谁
+    // 注意 if 顺序——超管 > 管理员 > 组织者，覆盖顺序不能乱
     public String formatUserNo(User u) {
         String prefix;
         if (Role.SUPERADMIN.equals(u.getRole())) prefix = "SUP";
         else if (Boolean.TRUE.equals(u.getIsAdmin())) prefix = "ADM";
         else if (Boolean.TRUE.equals(u.getIsOrganizer())) prefix = "ORG";
         else prefix = "VOL";
-        // 使用 username（工号/学号）作为编号后缀
         return prefix + "-" + u.getUsername();
     }
 
-    /** 用户输入 "ADM-12345678" 时去掉前缀 ADM-/ORG-/VOL-/SUP- */
+    // 搜索时用户可能直接复制完整编号过来，所以容错一下 ADM-/ORG- 前缀
     private String stripPrefix(String s) {
         return s.replaceFirst("^(SUP|ADM|ORG|VOL)-", "");
     }

@@ -3,7 +3,8 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/vms?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
-    password: 123456   # ← 改成你本机 MySQL root 密码（请勿把真实密码提交到公开仓库）
+    # ↓ 本机 MySQL root 密码，公开仓库别提交真密码！
+    password: 123456
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -13,18 +14,19 @@ spring:
 
 vms:
   jwt:
+    # JWT 密钥，配置项缺省值是 dev 用的别拿去线上
     secret: ${VMS_JWT_SECRET:Z2p4LXZtcy1qd3Qtc2VjcmV0LWRldi0yMDI2LWRvLW5vdC11c2UtaW4tcHJvZA==}
     expiration-hours: 24
     issuer: vms-backend
   seed:
-    # 设为 true，首次启动会自动生成 ≥200 用户/≥100 活动/≥2000 报名+签到+工时（PROJECT.md §8.2）
-    # 已检测到 bulk% 用户存在时会跳过，可重复启动；演示完成后可改回 false
+    # 首次启动会灌 ≥200 用户 / ≥100 活动 / ≥2000 报名+签到，用来撑 SRS 的数据规模指标
+    # 二次启动检测到 bulk 用户在就跳过，演示完不想再灌可以改 false
     bulk: true
     organizers-target: 14
     volunteers-target: 200
     activities-target: 100
     regs-target: 2000
   upload:
-    # 文件上传根目录（相对工作目录或绝对路径）；Windows 也可改为 D:/vms-uploads
+    # 上传文件存哪儿，相对路径就跟着工作目录走；Windows 想绝对路径写 D:/vms-uploads 也行
     dir: ./uploads
     max-mb: 5

@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+// 四个角色四套 metrics，前端 Dashboard 各看各的
 @Service
 @RequiredArgsConstructor
 public class StatService {
@@ -36,7 +37,7 @@ public class StatService {
     private final CertificateMapper certificateMapper;
 
     public DashboardStats forUser(UserPrincipal me, String view) {
-        // 前端可以传 view 指定看哪个角色的看板（双身份用户切换时需要）
+        // view 给双身份用户切换看板用（同一个账号 organizer/volunteer 两套数据都要看得到）
         String effectiveRole = resolveEffectiveRole(me, view);
         Map<String, Object> m = new LinkedHashMap<>();
         switch (effectiveRole) {
@@ -48,7 +49,7 @@ public class StatService {
         return DashboardStats.builder().role(effectiveRole).metrics(m).build();
     }
 
-    /** 校验 view 参数是否在用户权限范围内，不合法则回退到 JWT 中的角色 */
+    // 前端传的 view 不能比自身资格高，越权就回落到 JWT 里的本职角色
     private String resolveEffectiveRole(UserPrincipal me, String view) {
         if (view == null || view.isBlank()) {
             return me.role();

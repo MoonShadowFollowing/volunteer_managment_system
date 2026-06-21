@@ -18,6 +18,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+// Spring Security 的总入口：白名单 + JWT 过滤器 + 401/403 处理
+// @EnableMethodSecurity 开了之后 @PreAuthorize 才生效
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -31,10 +33,8 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * 阻止 Spring Boot 把 JwtAuthenticationFilter（@Component）自动注册到全局 Servlet 过滤链。
-     * 它只应在 SecurityFilterChain 内被调度。
-     */
+    // 这步坑过：JwtAuthenticationFilter 被 @Component 之后 Spring Boot 默认会再注册一次到全局 Servlet
+    // 链，导致每个请求过两遍。这里显式 disable 让它只在 SecurityFilterChain 里跑
     @Bean
     public FilterRegistrationBean<JwtAuthenticationFilter> disableJwtFilterAutoRegistration(
             JwtAuthenticationFilter filter) {
@@ -50,6 +50,8 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
+                        // 白名单：登录、健康检查、对外综测、静态文件、Swagger
+                        // 其它一律要 JWT
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/health/**",

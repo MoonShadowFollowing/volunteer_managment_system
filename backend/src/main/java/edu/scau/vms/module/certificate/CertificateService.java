@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+// 证书只是查 + 下载，发证和失效的逻辑在 AttendanceService 里联动写好了
 @Service
 @RequiredArgsConstructor
 public class CertificateService {
@@ -35,15 +36,14 @@ public class CertificateService {
         Page<Certificate> result = certificateMapper.selectPage(p, qw);
 
         List<CertificateVO> vos = toVOs(result.getRecords());
+        // 活动名模糊过滤放在 VO 出来之后，省得另写 join——反正分页数据量不大
         if (activityName != null && !activityName.isBlank()) {
             vos = vos.stream().filter(v -> v.getActivityName() != null && v.getActivityName().contains(activityName)).toList();
         }
         return PageResult.of(result.getTotal(), vos);
     }
 
-    /**
-     * 取单个证书的 VO，并校验归属志愿者。S5 PDF 下载使用。
-     */
+    // PDF 下载用，顺手做归属校验：只有本人能拉
     public CertificateVO getOwnedById(Long certId, Long volunteerId) {
         Certificate c = certificateMapper.selectById(certId);
         if (c == null) {

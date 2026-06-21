@@ -171,6 +171,7 @@
 </template>
 
 <script setup>
+// 管理员审活动：通过 / 驳回。通过后组织者那边的"发布"开关才能用
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listActivities, auditActivity } from '../../api/activity'

@@ -71,6 +71,7 @@
 </template>
 
 <script setup>
+// 管理员发系统公告。后端会实化一条给每个目标用户，红点能精准到人
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { sendNotice, listNotices } from '../../api/message'

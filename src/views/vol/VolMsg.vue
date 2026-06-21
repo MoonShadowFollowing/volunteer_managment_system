@@ -67,6 +67,8 @@
 </template>
 
 <script setup>
+// 志愿者收件箱：报名通知、资质审核结果、系统公告
+// scope=volunteer 让后端只返这个身份相关的，避免组织者那栏的混进来
 import { onMounted, ref, computed } from 'vue'
 import { myMessages } from '../../api/message'
 

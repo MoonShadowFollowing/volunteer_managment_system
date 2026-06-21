@@ -1,8 +1,11 @@
+// 全项目共用的 axios 实例
+// 拦截器把后端的 Result 壳子拆开；401 跳登录；403 静默刷一下 me() 看权限是不是被改了
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '../router'
 
 const http = axios.create({
+  // 默认后端在本机 8081；CI 或别的环境可以走 VUE_APP_API_BASE 覆盖
   baseURL: process.env.VUE_APP_API_BASE || 'http://localhost:8081/api',
   timeout: 10000
 })
@@ -46,7 +49,8 @@ http.interceptors.response.use(
       clearAuthAndRedirect(body?.msg || '登录已过期，请重新登录')
     } else if (status === 403) {
       ElMessage.error(body?.msg || '权限不足')
-      // 权限可能已被管理员撤销，静默刷新 /auth/me 同步本地状态
+      // 可能权限刚被撤销了，悄悄重拉 /auth/me 看下，把本地 localStorage 同步过来
+      // 然后看当前页是组织者/管理员页就跳走，免得用户一脸懵
       try {
         const token = localStorage.getItem('token')
         if (token) {

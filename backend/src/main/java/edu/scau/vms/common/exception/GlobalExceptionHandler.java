@@ -14,18 +14,19 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
+// 全局异常拦截，每种异常对应一种返回形态
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /** 业务可控异常 → Result.fail，HTTP 200 */
+    // 业务异常照原样回前端，HTTP 还是 200
     @ExceptionHandler(BizException.class)
     public Result<Void> handleBiz(BizException e) {
         log.warn("BizException code={} msg={}", e.getCode(), e.getMessage());
         return Result.fail(e.getCode(), e.getMessage());
     }
 
-    /** 参数校验失败（@Valid） → 拼接所有字段错误信息 */
+    // @Valid 校验失败，把每个字段的错拼一块儿返回，方便前端定位
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<Void> handleValidation(MethodArgumentNotValidException e) {
         String detail = e.getBindingResult().getFieldErrors().stream()
@@ -35,7 +36,7 @@ public class GlobalExceptionHandler {
         return Result.fail(ErrorCode.PARAM_INVALID, detail);
     }
 
-    /** 未认证（主路径由 SecurityConfig 的 entryPoint 拦下，此处兜底） */
+    // 一般 SecurityConfig 的 entryPoint 已经先拦了，这里是兜底
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Result<Void>> handleAuth(AuthenticationException e) {
         log.warn("AuthenticationException: {}", e.getMessage());
@@ -44,7 +45,7 @@ public class GlobalExceptionHandler {
                 .body(Result.fail(ErrorCode.UNAUTHORIZED, "未登录或Token已过期"));
     }
 
-    /** @PreAuthorize 拒绝后会进这里 */
+    // @PreAuthorize 拒掉的请求会跑到这里
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Result<Void>> handleDenied(AccessDeniedException e) {
         log.warn("AccessDeniedException: {}", e.getMessage());
@@ -53,7 +54,7 @@ public class GlobalExceptionHandler {
                 .body(Result.fail(ErrorCode.FORBIDDEN, "权限不足"));
     }
 
-    /** 兜底：未知异常 → 500，避免泄露堆栈细节 */
+    // 没接住的全部归 500，堆栈不外露
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Result<Void>> handleOther(Exception e) {
         log.error("Unhandled exception", e);

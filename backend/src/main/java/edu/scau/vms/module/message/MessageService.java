@@ -20,6 +20,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+// 消息分两类：业务通知（receiver 实化）+ 系统公告（一条原始 + 给每个目标实化一条）
+// 实化的好处是 is_read 能精准到人，缺点就是公告会膨胀（200 人就 200 条）
 @Service
 @RequiredArgsConstructor
 public class MessageService {
@@ -27,7 +29,7 @@ public class MessageService {
     private final MessageMapper messageMapper;
     private final UserMapper userMapper;
 
-    /** 个人收件箱，按身份隔离：只显示 targetScope 匹配当前角色或无隔离标记的消息 */
+    // 个人收件箱按身份过滤：志愿者只看自己份的 + 全员的，组织者那栏同理
     public PageResult<MessageVO> mine(Long userId, Long page, Long size, String type, String role) {
         LambdaQueryWrapper<Message> qw = new LambdaQueryWrapper<>();
         qw.eq(Message::getReceiverId, userId);
@@ -41,7 +43,7 @@ public class MessageService {
         return PageResult.of(result.getTotal(), result.getRecords().stream().map(this::toVO).toList());
     }
 
-    /** 历史公告列表（receiver_id 为 NULL 的原始公告） */
+    // 历史公告：只看那条 receiver_id=null 的原始记录，实化条不重复展示
     public PageResult<MessageVO> notices(Long page, Long size) {
         LambdaQueryWrapper<Message> qw = new LambdaQueryWrapper<>();
         qw.isNull(Message::getReceiverId)
@@ -52,7 +54,7 @@ public class MessageService {
         return PageResult.of(result.getTotal(), result.getRecords().stream().map(this::toVO).toList());
     }
 
-    /** 管理员发公告：保留 1 条原始 + 实化到每个目标用户 */
+    // 管理员发公告：先存一条 receiver=null 的原始留底，再给每个目标用户复制一条实化的
     @Transactional
     public void broadcast(NoticeRequest req) {
         LocalDateTime now = LocalDateTime.now();
@@ -81,7 +83,7 @@ public class MessageService {
         }
     }
 
-    /** 业务通知：直送某一用户，targetScope 控制身份隔离 */
+    // 业务通知（报名审核、工时更新等）单点投递，scope 给前端用来区分身份栏
     public void sendDirect(Long receiverId, String type, String title, String content, String scope) {
         Message m = new Message();
         m.setMsgType(type);
@@ -110,6 +112,7 @@ public class MessageService {
         return null;
     }
 
+    // 按 targets 列表算出要发给哪些人，没勾就空集
     private List<User> findTargetUsers(List<String> targets) {
         LambdaQueryWrapper<User> qw = new LambdaQueryWrapper<>();
         boolean wantVol = targets.contains("全体志愿者");

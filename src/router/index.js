@@ -1,3 +1,6 @@
+// 路由 + 角色守卫
+// 角色是从 localStorage 里读的，登录时写、撤销权限时由 /auth/me 拦截器同步
+// 双身份逻辑：志愿者 + isOrganizerQualified 也可以访问 organizer 子路由
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '../layout/MainLayout.vue'
 
@@ -61,6 +64,7 @@ router.beforeEach((to, from, next) => {
       return false
     })
     if (!allowed) {
+      // 跑回自己角色的"家"，每种身份默认页不一样
       const home =
         currentRole === 'superadmin' ? '/sys/super-add' :
         currentRole === 'admin' ? '/sys/dashboard-admin' :

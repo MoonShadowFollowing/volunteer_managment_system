@@ -32,13 +32,10 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-/**
- * S5 大批量种子数据。
- *
- * 触发：application(-dev).yml 设 `vms.seed.bulk: true`，并已存在小种子（schema/data.sql 已跑）。
- * 幂等：检测到任何 `bulk%` 前缀用户存在则直接跳过。
- * 目标：≥200 用户 / ≥100 活动 / ≥2000 报名/签到/工时（PROJECT.md §8.2）。
- */
+// 演示用的批量种子数据
+// application-dev.yml 里 vms.seed.bulk=true 才会启用
+// 二次启动会检测到 bulkxxx 用户已存在直接跳过，不会重复灌
+// 目标量：≥200 用户 / ≥100 活动 / ≥2000 报名+签到（撑 SRS §8.2 的数据规模要求）
 @Slf4j
 @Component
 @RequiredArgsConstructor

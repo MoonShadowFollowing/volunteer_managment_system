@@ -69,6 +69,8 @@
 </template>
 
 <script setup>
+// 志愿者申请成为组织者：填理由 + 上传证明材料 + 查看自己的历史申请
+// 已经有"待审核"申请就别重复提交，后端会拒
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { uploadAction, uploadHeaders, resolveFileUrl } from '../../api/file'

@@ -34,15 +34,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * 文件上传与静态读取（S5）。
- * - 上传需鉴权；保存到本地磁盘 ${vms.upload.dir}/yyyy/MM/<uuid>.<ext>
- * - 读取走 /api/files/static/** 白名单，按扩展名设 MIME；只允许在 uploadDir 内（防路径穿越）
- * - 体积 ≤ ${vms.upload.max-mb} MB，类型限制：jpg/jpeg/png/gif/webp/pdf
- *
- * 当前用途：组织者资质申请「证明材料」上传。
- */
-@Tag(name = "File", description = "文件上传与静态读取 S5")
+// 文件上传 + 静态读取。文件落 ${vms.upload.dir}/yyyy/MM/<uuid>.<ext>
+// 写文件之前要 normalize + startsWith(root) 双检，挡掉 ../ 这种穿越
+// 目前就组织者申请的证明材料在用，以后多了再说
+@Tag(name = "File", description = "文件上传/静态访问")
 @Slf4j
 @RestController
 @RequestMapping("/api/files")
@@ -92,6 +87,7 @@ public class FileController {
             Path dir = root.resolve(subDir).normalize();
             Files.createDirectories(dir);
             Path dest = dir.resolve(name).normalize();
+            // normalize 之后还要再确认一遍是不是真在 root 下，挡 ../ 攻击
             if (!dest.startsWith(root)) {
                 throw new BizException(ErrorCode.PARAM_INVALID, "非法文件路径");
             }
@@ -119,6 +115,7 @@ public class FileController {
             return ResponseEntity.notFound().build();
         }
         String rel = full.substring(prefix.length());
+        // 三个常见的恶意路径形态都挡一遍，再保险也不嫌多
         if (rel.contains("..") || rel.startsWith("/") || rel.contains("\\")) {
             return ResponseEntity.badRequest().build();
         }

@@ -43,7 +43,8 @@ public class AuthController {
         return Result.ok(new RefreshResponse(authService.refresh(principal)));
     }
 
-    @Operation(summary = "登出", description = "无状态 JWT，登出仅由前端清除 token；本接口仅作语义占位")
+    // JWT 是无状态的，登出其实就是前端把 token 扔了，这接口纯粹是个仪式感
+    @Operation(summary = "登出")
     @PostMapping("/logout")
     public Result<Void> logout() {
         return Result.ok();

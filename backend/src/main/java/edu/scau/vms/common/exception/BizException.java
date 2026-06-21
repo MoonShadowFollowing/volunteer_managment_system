@@ -2,10 +2,8 @@ package edu.scau.vms.common.exception;
 
 import lombok.Getter;
 
-/**
- * 业务异常：可控的、需要回传给前端的错误。
- * 抛出后由 GlobalExceptionHandler 统一包装为 Result.fail(code, msg) 返回 200。
- */
+// 业务级异常：能预料、要回给前端看的那种
+// 抛出去会被 GlobalExceptionHandler 包成 Result.fail(code, msg)，HTTP 还是 200
 @Getter
 public class BizException extends RuntimeException {
 

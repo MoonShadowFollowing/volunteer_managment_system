@@ -28,6 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+// 活动的 CRUD + 两层状态（审核状态 × 发布状态），改逻辑时记得：
+//   - 组织者改了活动 → 重新走审核，发布开关回 STOPPED
+//   - 只有 APPROVED 的活动志愿者才看得见
 @Service
 @RequiredArgsConstructor
 public class ActivityService {
@@ -47,10 +50,13 @@ public class ActivityService {
         if (auditStatus != null && !auditStatus.isBlank()) qw.eq(Activity::getAuditStatus, auditStatus);
         if (publishStatus != null && !publishStatus.isBlank()) qw.eq(Activity::getPublishStatus, publishStatus);
         if (organizerId != null) qw.eq(Activity::getOrganizerId, organizerId);
+        // volunteerView=true 是给志愿者列表用的，强制只看"审核通过+发布中"
         if (volunteerView) {
             qw.eq(Activity::getAuditStatus, AuditStatus.APPROVED)
               .eq(Activity::getPublishStatus, PublishStatus.PUBLISHED);
         }
+        // 管理员/组织者列表里待审核的置顶，剩下的按开始时间倒序
+        // 直接拼 CASE 是因为 LambdaQueryWrapper 不太好表达这种条件排序
         qw.last("ORDER BY CASE WHEN audit_status = '待审核' THEN 0 ELSE 1 END, start_time DESC");
 
         Page<Activity> p = new Page<>(page == null ? 1 : page, size == null ? 10 : size);
@@ -113,6 +119,7 @@ public class ActivityService {
         activityMapper.updateById(a);
     }
 
+    // 发布开关：必须先审核通过才能"发布中"，停了能再开
     @Transactional
     public void togglePublish(Long activityId, Long currentUserId, boolean isAdmin, boolean publish) {
         Activity a = mustOwn(activityId, currentUserId, isAdmin);
@@ -123,6 +130,7 @@ public class ActivityService {
         activityMapper.updateById(a);
     }
 
+    // 老朋友越权防护：组织者只能动自己的活动，admin 不限
     private Activity mustOwn(Long activityId, Long currentUserId, boolean isAdmin) {
         Activity a = activityMapper.selectById(activityId);
         if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
@@ -145,6 +153,7 @@ public class ActivityService {
 
         Map<Long, Long> enrolledCount = countApprovedRegistrations(ids);
 
+        // organizer 通常就一个或几个，循环查就行，不值得 batch
         Map<Long, String> organizerNames = new HashMap<>();
         for (Long uid : organizerIds) {
             User u = userService.findById(uid);

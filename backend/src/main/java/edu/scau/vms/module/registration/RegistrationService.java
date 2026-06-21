@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+// 报名 + 审核。审核通过会顺手在 attendance 里建一条"未签到"的占位记录
+// 这样组织者后面手动补签时不用再担心"找不到 attendance 行"
 @Service
 @RequiredArgsConstructor
 public class RegistrationService {
@@ -56,6 +58,7 @@ public class RegistrationService {
         LambdaQueryWrapper<Registration> qw = new LambdaQueryWrapper<>();
         qw.eq(Registration::getActivityId, activityId).eq(Registration::getVolunteerId, volunteerId);
         Registration exist = registrationMapper.selectOne(qw);
+        // 只有"已取消"和"审核拒绝"才允许重新报；待审核/已通过都算占着位
         if (exist != null && !RegStatus.CANCELLED.equals(exist.getAuditStatus())
                 && !RegStatus.REJECTED.equals(exist.getAuditStatus())) {
             throw new BizException(ErrorCode.BIZ_CONFLICT, "您已报名该活动");
@@ -65,7 +68,8 @@ public class RegistrationService {
             throw new BizException(ErrorCode.BIZ_CONFLICT, "活动报名人数已满");
         }
         if (exist != null) {
-            // 之前取消或被拒绝，复用记录改回待审核
+            // 之前取消/被拒过，复用同一行 reg_id 改回待审核
+            // 不新建是因为 (activity_id, volunteer_id) 有 UNIQUE 约束，再 insert 会爆
             exist.setAuditStatus(RegStatus.PENDING);
             exist.setAuditedAt(null);
             exist.setAppliedAt(LocalDateTime.now());
@@ -108,11 +112,13 @@ public class RegistrationService {
             throw new BizException(ErrorCode.BIZ_CONFLICT, "仅待审核报名可处理");
         }
         if (approve) {
+            // 真审到通过那一刻再查一次容量，避免并发场景下越审越多
             long approved = countApproved(r.getActivityId());
             if (approved >= a.getCapacity()) {
                 throw new BizException(ErrorCode.BIZ_CONFLICT, "活动报名人数已满");
             }
             r.setAuditStatus(RegStatus.APPROVED);
+            // 顺便占住 attendance 那行，后续签到/补签直接 update 就行
             ensureAttendance(r.getActivityId(), r.getVolunteerId());
         } else {
             r.setAuditStatus(RegStatus.REJECTED);
@@ -135,7 +141,7 @@ public class RegistrationService {
                 "organizer");
     }
 
-    /** 志愿者：我的已报名列表 */
+    // 志愿者看自己的报名记录，会带上 attendance 那行（签到时间/工时一起返）
     public PageResult<RegistrationVO> mine(Long volunteerId, Long page, Long size, String auditStatus) {
         LambdaQueryWrapper<Registration> qw = new LambdaQueryWrapper<>();
         qw.eq(Registration::getVolunteerId, volunteerId).orderByDesc(Registration::getAppliedAt);
@@ -145,7 +151,7 @@ public class RegistrationService {
         return PageResult.of(result.getTotal(), toVOs(result.getRecords(), true));
     }
 
-    /** 组织者：某活动的报名列表 */
+    // 组织者看自己活动的报名，待审核排前面，方便一眼看到要处理的
     public PageResult<RegistrationVO> byActivity(Long activityId, Long page, Long size) {
         LambdaQueryWrapper<Registration> qw = new LambdaQueryWrapper<>();
         qw.eq(Registration::getActivityId, activityId)
@@ -156,6 +162,7 @@ public class RegistrationService {
         return PageResult.of(result.getTotal(), toVOs(result.getRecords(), false));
     }
 
+    // 报名审核通过时占住 attendance 一行；要是被反复审核就 noop
     private void ensureAttendance(Long activityId, Long volunteerId) {
         LambdaQueryWrapper<Attendance> qw = new LambdaQueryWrapper<>();
         qw.eq(Attendance::getActivityId, activityId).eq(Attendance::getVolunteerId, volunteerId);
@@ -176,6 +183,7 @@ public class RegistrationService {
         return registrationMapper.selectCount(qw);
     }
 
+    // includeAttendance=true 时多 join 一次 attendance，给志愿者自己的页面用
     private List<RegistrationVO> toVOs(List<Registration> list, boolean includeAttendance) {
         if (list.isEmpty()) return List.of();
         List<Long> activityIds = list.stream().map(Registration::getActivityId).distinct().toList();

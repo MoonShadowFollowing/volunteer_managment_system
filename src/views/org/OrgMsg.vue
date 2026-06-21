@@ -66,6 +66,7 @@
 </template>
 
 <script setup>
+// 组织者收件箱：活动通知、新报名提醒、系统公告
 import { onMounted, ref, computed } from 'vue'
 import { myMessages } from '../../api/message'
 

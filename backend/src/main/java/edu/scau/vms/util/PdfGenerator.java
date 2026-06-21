@@ -26,10 +26,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 
-/**
- * 证书 PDF 生成器（iText 7）。
- * 使用 Adobe 标准 CJK 字体 STSong-Light + UniGB-UCS2-H（来自 font-asian，无须本地 TTF 文件）。
- */
+// 证书 PDF 生成器，iText 7
+// 中文走 STSong-Light + UniGB-UCS2-H，是 font-asian 包内置的，不需要找 TTF 字体
+// 不然部署时还得带 simhei.ttf 之类的，麻烦
 @Slf4j
 @Component
 public class PdfGenerator {
@@ -40,13 +39,7 @@ public class PdfGenerator {
     private static final DeviceRgb COLOR_TITLE = new DeviceRgb(178, 34, 34);  // 深红
     private static final DeviceRgb COLOR_ACCENT = new DeviceRgb(102, 51, 0);  // 棕
 
-    /**
-     * 生成单张证书 PDF。
-     * @param vo CertificateVO（已包含活动名/工时/状态等）
-     * @param volunteerName 志愿者姓名
-     * @param volunteerNo 志愿者展示编号（VOL-00007）
-     * @return 完整 PDF 字节流
-     */
+    // vo 里已经有活动名/工时/状态那些，外面只需要补一下姓名和编号
     public byte[] generateCertificate(CertificateVO vo, String volunteerName, String volunteerNo) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             PdfWriter writer = new PdfWriter(baos);
@@ -178,7 +171,7 @@ public class PdfGenerator {
         return s == null ? "" : s;
     }
 
-    /** "张三" → "张  三"；让单字之间留宽，配合中文证书排版。 */
+    // "张三" → "张  三"，证书上看起来比较有那个"郑重"的味道
     private static String spaceOut(String name) {
         if (name == null || name.isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
@@ -189,7 +182,7 @@ public class PdfGenerator {
         return sb.toString();
     }
 
-    /** 兜底证书编号：actNo 不空就拼 actNo + 后 5 位 certId，否则用 CERT-{certId}。 */
+    // 优先用 actNo 拼，没有就退化成 CERT-{certId}，反正不能让 PDF 上写"null"
     private static String formatCertNo(CertificateVO vo) {
         if (vo == null) return "CERT-UNKNOWN";
         if (vo.getActNo() != null && !vo.getActNo().isEmpty()) {

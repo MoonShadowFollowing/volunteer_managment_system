@@ -50,6 +50,7 @@
 </template>
 
 <script setup>
+// 超管的专属页：把符合条件的用户提升为管理员。后端只允许学号 8 位的用户被提
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { promotable, promoteAdmin } from '../../api/user'

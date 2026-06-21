@@ -36,7 +36,8 @@ import { ElMessage } from 'element-plus'
 const router = useRouter()
 
 const enterSys = (role) => {
-  // 权限校验逻辑
+  // 前端先挡一道，组织者/管理员要有相应资格才能进去
+  // 后端的 @PreAuthorize 是真正的兜底
   if (role === 'organizer' && localStorage.getItem('isOrganizerQualified') !== 'true') {
     return ElMessage.error('无权限：您目前不是组织者，请先以志愿者身份进入系统申请！')
   }
@@ -44,7 +45,7 @@ const enterSys = (role) => {
     return ElMessage.error('无权限：仅平台管理员可进入！(测试请用admin账号登录)')
   }
 
-  // 记录选中的角色并跳转
+  // 把选中身份写回 localStorage，下一步路由就按这个走
   localStorage.setItem('userRole', role)
   if (role === 'admin') router.push('/sys/dashboard-admin')
   else if (role === 'organizer') router.push('/sys/dashboard-org')

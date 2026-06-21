@@ -17,13 +17,14 @@ public class HealthController {
 
     private final JdbcTemplate jdbcTemplate;
 
-    @Operation(summary = "Liveness 探活", description = "应用是否启动")
+    @Operation(summary = "ping 一下")
     @GetMapping("/ping")
     public Result<String> ping() {
         return Result.ok("pong");
     }
 
-    @Operation(summary = "DB 探活", description = "查询 users 表行数验证数据库连接与建表/种子是否就绪")
+    // 数 users 表行数顺便验 DB 连得通、schema/seed 跑过没
+    @Operation(summary = "DB 探活 + 用户数")
     @GetMapping("/db")
     public Result<Long> db() {
         Long count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users", Long.class);

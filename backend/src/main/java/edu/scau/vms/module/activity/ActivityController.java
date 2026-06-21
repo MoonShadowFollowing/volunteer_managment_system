@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.Map;
 
-@Tag(name = "Activity", description = "志愿活动管理 FR-01")
+@Tag(name = "Activity", description = "志愿活动")
 @RestController
 @RequestMapping("/api/activities")
 @RequiredArgsConstructor
@@ -27,7 +27,8 @@ public class ActivityController {
 
     private final ActivityService activityService;
 
-    @Operation(summary = "分页查询活动")
+    // volunteerView=true 给志愿者列表用，会自动过滤"审核通过+发布中"
+    @Operation(summary = "分页查活动")
     @GetMapping
     public Result<PageResult<ActivityVO>> list(
             @RequestParam(required = false, defaultValue = "1") Long page,
@@ -49,7 +50,8 @@ public class ActivityController {
         return Result.ok(activityService.detail(id));
     }
 
-    @Operation(summary = "组织者发布新活动（待审核）")
+    // 刚发布的活动默认进"待审核 + 已停止"，等管理员点过才能开
+    @Operation(summary = "组织者发布新活动")
     @PostMapping
     @PreAuthorize("hasAuthority('ORG')")
     public Result<Map<String, Long>> create(@AuthenticationPrincipal UserPrincipal me,
@@ -58,7 +60,8 @@ public class ActivityController {
         return Result.ok(Map.of("activityId", id));
     }
 
-    @Operation(summary = "组织者修改活动（修改后重新进入待审核）")
+    // 注意：组织者改完活动会回到"待审核"，得重新走一遍审核
+    @Operation(summary = "改活动")
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ORG') or hasAuthority('ADM')")
     public Result<Void> update(@AuthenticationPrincipal UserPrincipal me,
@@ -68,7 +71,7 @@ public class ActivityController {
         return Result.ok();
     }
 
-    @Operation(summary = "组织者删除活动")
+    @Operation(summary = "删活动")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ORG') or hasAuthority('ADM')")
     public Result<Void> delete(@AuthenticationPrincipal UserPrincipal me, @PathVariable Long id) {
@@ -84,7 +87,7 @@ public class ActivityController {
         return Result.ok();
     }
 
-    @Operation(summary = "组织者切换前台发布状态")
+    @Operation(summary = "前台发布开关（仅审核通过后可用）")
     @PutMapping("/{id}/publish")
     @PreAuthorize("hasAuthority('ORG') or hasAuthority('ADM')")
     public Result<Void> publish(@AuthenticationPrincipal UserPrincipal me,

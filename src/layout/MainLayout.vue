@@ -48,9 +48,11 @@
 </template>
 
 <script setup>
+// 整个系统的外壳：侧栏菜单、顶栏身份切换、未读消息红点、刷新页面回填用户信息
+// 菜单是从 router 配置里挑出 meta.roles 匹配当前角色的那些
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Trophy, Fold, Expand, Ticket } from '@element-plus/icons-vue' // 确保导入图标
+import { Trophy, Fold, Expand, Ticket } from '@element-plus/icons-vue'
 import { fetchMe, logout as logoutApi } from '../api/auth'
 import { unreadCount, markAllRead } from '../api/message'
 
@@ -109,7 +111,8 @@ const displayIdTag = computed(() => {
   return `${roleName}编号：${prefixMap[currentRole.value] || ''}${username}`
 })
 const logout = async () => {
-  try { await logoutApi() } catch (e) { /* 后端 stub，失败也无所谓 */ }
+  // 后端 logout 是无状态 JWT 的仪式接口，调失败也不影响清本地
+  try { await logoutApi() } catch (e) { /* ignore */ }
   localStorage.removeItem('token')
   localStorage.removeItem('isLoggedIn')
   localStorage.removeItem('userRole')
@@ -154,6 +157,8 @@ onUnmounted(() => {
   window.removeEventListener('org-auth-updated', onOrgAuthUpdated)
 })
 
+// 每次路由切换都重读一次 localStorage，免得权限变更后页面还显示旧的
+// 走到消息页就顺手把当前身份栏的未读全标已读，红点清零
 watch(() => route.path, async () => {
   hasOrgAuth.value = localStorage.getItem('isOrganizerQualified') === 'true'
   currentRole.value = localStorage.getItem('userRole') || 'volunteer'

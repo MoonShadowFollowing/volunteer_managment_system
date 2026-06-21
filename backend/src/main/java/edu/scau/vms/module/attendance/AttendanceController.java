@@ -14,7 +14,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Attendance", description = "签到与志愿时 FR-03/04")
+// 签到/志愿时这块全是组织者后台改数据，志愿者本人没自助入口
+@Tag(name = "Attendance", description = "签到与志愿时")
 @RestController
 @RequestMapping("/api/attendance")
 @RequiredArgsConstructor
@@ -22,7 +23,7 @@ public class AttendanceController {
 
     private final AttendanceService attendanceService;
 
-    @Operation(summary = "组织者查看活动签到记录")
+    @Operation(summary = "活动的签到列表")
     @GetMapping
     @PreAuthorize("hasAuthority('ORG') or hasAuthority('ADM')")
     public Result<PageResult<AttendanceVO>> list(
@@ -33,7 +34,8 @@ public class AttendanceController {
         return Result.ok(attendanceService.byActivity(activityId, page, pageSize, me.userId(), me.admin()));
     }
 
-    @Operation(summary = "修改志愿时（工时=0 自动失效证书）")
+    // 注意：hours+minutes=0 会触发证书失效，组织者前端弹窗有提示
+    @Operation(summary = "改志愿时")
     @PutMapping("/{recordId}/hours")
     @PreAuthorize("hasAuthority('ORG') or hasAuthority('ADM')")
     public Result<Void> updateHours(@AuthenticationPrincipal UserPrincipal me,

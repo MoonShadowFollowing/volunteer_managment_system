@@ -64,6 +64,7 @@
 </template>
 
 <script setup>
+// 在职组织者列表 + 撤销资质。撤销后那位用户的组织者菜单立刻消失（403 同步逻辑）
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listOrganizers, revokeOrganizer } from '../../api/organizer'

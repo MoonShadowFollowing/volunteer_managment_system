@@ -11,7 +11,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "User", description = "用户与角色管理 FR-08")
+// 整个 controller 都是超管专属，普通管理员都进不来
+@Tag(name = "User", description = "用户与角色管理（超管）")
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor

@@ -163,6 +163,7 @@
 </template>
 
 <script setup>
+// 组织者的活动 CRUD：新建/改/删/前台启停。改完会自动回到"待审核"
 import { onMounted, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {

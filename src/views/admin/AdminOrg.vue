@@ -92,6 +92,7 @@
 </template>
 
 <script setup>
+// 管理员审组织者资质申请，可以预览证明材料；通过后用户立刻有 organizer 资格
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listApplications, auditApplication } from '../../api/organizer'

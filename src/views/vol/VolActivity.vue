@@ -132,6 +132,7 @@
 </template>
 
 <script setup>
+// 志愿者看可报名活动 + 报名。列表传 volunteerView=true，让后端只返"审核通过+发布中"的
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listActivities } from '../../api/activity'
