@@ -7,6 +7,7 @@ import edu.scau.vms.common.constant.AttendStatus;
 import edu.scau.vms.common.constant.CertStatus;
 import edu.scau.vms.common.constant.ErrorCode;
 import edu.scau.vms.common.constant.MsgType;
+import edu.scau.vms.common.constant.PublishStatus;
 import edu.scau.vms.common.exception.BizException;
 import edu.scau.vms.module.activity.entity.Activity;
 import edu.scau.vms.module.activity.mapper.ActivityMapper;
@@ -90,37 +91,9 @@ public class AttendanceService {
         attendanceMapper.updateById(att);
 
         // 联动证书：>0 → 自动发证/复活；=0 → 失效已发证书。
-        // 这段如果以后还要在别的地方用，得抽出来，不然 manualSign 那边就重复了
-        boolean hasHours = req.getHours() > 0 || req.getMinutes() > 0;
-        Certificate cert = findCert(att.getActivityId(), att.getVolunteerId());
-        if (hasHours) {
-            if (cert == null) {
-                cert = new Certificate();
-                cert.setTitle(a.getTitle() + "志愿服务证明");
-                cert.setActivityId(att.getActivityId());
-                cert.setVolunteerId(att.getVolunteerId());
-                cert.setStartTime(a.getStartTime());
-                cert.setEndTime(a.getEndTime());
-                cert.setCertHours(req.getHours());
-                cert.setCertMinutes(req.getMinutes());
-                cert.setIssuedDate(LocalDate.now());
-                cert.setStatus(CertStatus.VALID);
-                certificateMapper.insert(cert);
-            } else {
-                cert.setCertHours(req.getHours());
-                cert.setCertMinutes(req.getMinutes());
-                cert.setStatus(CertStatus.VALID);
-                certificateMapper.updateById(cert);
-            }
-        } else if (cert != null) {
-            cert.setCertHours(0);
-            cert.setCertMinutes(0);
-            cert.setStatus(CertStatus.INVALID);
-            certificateMapper.updateById(cert);
-        }
+        syncCertificate(att.getActivityId(), att.getVolunteerId(), a, req.getHours(), req.getMinutes());
 
-        // vol 这里其实没用上，留着是因为想拼姓名进通知正文又懒得改文案……回头看心情
-        User vol = userService.findById(att.getVolunteerId());
+        boolean hasHours = req.getHours() > 0 || req.getMinutes() > 0;
         messageService.sendDirect(att.getVolunteerId(), MsgType.ACTIVITY_NOTICE,
                 "志愿时已更新 - " + a.getTitle(),
                 "您在活动【" + a.getTitle() + "】中的志愿时已被管理员更新为 "
@@ -161,32 +134,7 @@ public class AttendanceService {
         attendanceMapper.updateById(att);
 
         // 补签如果有工时就顺便发/续证书
-        // 这段几乎是 updateHours 那边的复制粘贴，看着挺脏的，下次重构抽个 issueCert 私有方法
-        boolean hasHours = req.getHours() > 0 || req.getMinutes() > 0;
-        if (hasHours) {
-            HoursRequest hr = new HoursRequest();
-            hr.setHours(req.getHours());
-            hr.setMinutes(req.getMinutes());
-            Certificate cert = findCert(att.getActivityId(), att.getVolunteerId());
-            if (cert == null) {
-                cert = new Certificate();
-                cert.setTitle(a.getTitle() + "志愿服务证明");
-                cert.setActivityId(att.getActivityId());
-                cert.setVolunteerId(att.getVolunteerId());
-                cert.setStartTime(a.getStartTime());
-                cert.setEndTime(a.getEndTime());
-                cert.setCertHours(req.getHours());
-                cert.setCertMinutes(req.getMinutes());
-                cert.setIssuedDate(LocalDate.now());
-                cert.setStatus(CertStatus.VALID);
-                certificateMapper.insert(cert);
-            } else {
-                cert.setCertHours(req.getHours());
-                cert.setCertMinutes(req.getMinutes());
-                cert.setStatus(CertStatus.VALID);
-                certificateMapper.updateById(cert);
-            }
-        }
+        syncCertificate(att.getActivityId(), att.getVolunteerId(), a, req.getHours(), req.getMinutes());
 
         User vol = userService.findById(att.getVolunteerId());
         messageService.sendDirect(att.getVolunteerId(), MsgType.ACTIVITY_NOTICE,
@@ -194,6 +142,95 @@ public class AttendanceService {
                 "您在活动【" + a.getTitle() + "】中已由管理员手动补签，志愿时登记为 "
                         + req.getHours() + " 小时 " + req.getMinutes() + " 分钟。",
                 "volunteer");
+    }
+
+    // 志愿者自助签到
+    @Transactional
+    public void checkIn(Long activityId, Long volunteerId) {
+        Activity a = activityMapper.selectById(activityId);
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (!PublishStatus.PUBLISHED.equals(a.getPublishStatus())) {
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "活动未发布或已停止，无法签到");
+        }
+
+        LambdaQueryWrapper<Attendance> qw = new LambdaQueryWrapper<>();
+        qw.eq(Attendance::getActivityId, activityId).eq(Attendance::getVolunteerId, volunteerId);
+        Attendance att = attendanceMapper.selectOne(qw);
+        if (att == null) throw new BizException(ErrorCode.BIZ_CONFLICT, "没有已通过的报名记录，无法签到");
+        if (!AttendStatus.NOT_CHECKED_IN.equals(att.getStatus())) {
+            throw new BizException(ErrorCode.ALREADY_CHECKED_IN,
+                    AttendStatus.CHECKED_IN.equals(att.getStatus()) ? "已签到，无需重复签到" : "当前状态不允许签到");
+        }
+
+        att.setCheckInTime(LocalDateTime.now());
+        att.setStatus(AttendStatus.CHECKED_IN);
+        attendanceMapper.updateById(att);
+    }
+
+    // 志愿者自助签退，自动算工时并发证
+    @Transactional
+    public void checkOut(Long activityId, Long volunteerId) {
+        LambdaQueryWrapper<Attendance> qw = new LambdaQueryWrapper<>();
+        qw.eq(Attendance::getActivityId, activityId).eq(Attendance::getVolunteerId, volunteerId);
+        Attendance att = attendanceMapper.selectOne(qw);
+        if (att == null) throw new BizException(ErrorCode.BIZ_CONFLICT, "没有签到记录");
+        if (!AttendStatus.CHECKED_IN.equals(att.getStatus())) {
+            throw new BizException(ErrorCode.NOT_CHECKED_IN,
+                    AttendStatus.NOT_CHECKED_IN.equals(att.getStatus()) ? "请先签到" : "当前状态不允许签退");
+        }
+
+        Activity a = activityMapper.selectById(att.getActivityId());
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+
+        LocalDateTime now = LocalDateTime.now();
+        att.setCheckOutTime(now);
+        long totalMinutes = java.time.Duration.between(att.getCheckInTime(), now).toMinutes();
+        if (totalMinutes < 0) totalMinutes = 0;
+        int hours = (int) (totalMinutes / 60);
+        int minutes = (int) (totalMinutes % 60);
+        att.setServiceHours(hours);
+        att.setServiceMinutes(minutes);
+        att.setStatus(AttendStatus.CHECKED_OUT);
+        attendanceMapper.updateById(att);
+
+        syncCertificate(att.getActivityId(), att.getVolunteerId(), a, hours, minutes);
+
+        messageService.sendDirect(att.getVolunteerId(), MsgType.ACTIVITY_NOTICE,
+                "签退成功 - " + a.getTitle(),
+                "您在活动【" + a.getTitle() + "】中已成功签退，志愿时登记为 "
+                        + hours + " 小时 " + minutes + " 分钟。",
+                "volunteer");
+    }
+
+    // >0 发证/复活，=0 失效已发证书
+    private void syncCertificate(Long activityId, Long volunteerId, Activity a, int hours, int minutes) {
+        boolean hasHours = hours > 0 || minutes > 0;
+        Certificate cert = findCert(activityId, volunteerId);
+        if (hasHours) {
+            if (cert == null) {
+                cert = new Certificate();
+                cert.setTitle(a.getTitle() + "志愿服务证明");
+                cert.setActivityId(activityId);
+                cert.setVolunteerId(volunteerId);
+                cert.setStartTime(a.getStartTime());
+                cert.setEndTime(a.getEndTime());
+                cert.setCertHours(hours);
+                cert.setCertMinutes(minutes);
+                cert.setIssuedDate(LocalDate.now());
+                cert.setStatus(CertStatus.VALID);
+                certificateMapper.insert(cert);
+            } else {
+                cert.setCertHours(hours);
+                cert.setCertMinutes(minutes);
+                cert.setStatus(CertStatus.VALID);
+                certificateMapper.updateById(cert);
+            }
+        } else if (cert != null) {
+            cert.setCertHours(0);
+            cert.setCertMinutes(0);
+            cert.setStatus(CertStatus.INVALID);
+            certificateMapper.updateById(cert);
+        }
     }
 
     private Certificate findCert(Long activityId, Long volunteerId) {

@@ -10,3 +10,11 @@ export const updateHours = (recordId, { hours, minutes }) =>
 // 手动补签：{checkInTime,checkOutTime,hours,minutes}
 export const manualSign = (recordId, body) =>
   http.put(`/attendance/${recordId}/manual`, body)
+
+// 志愿者自助签到；params: {activityId}
+export const checkIn = (activityId) =>
+  http.post(`/attendance/check-in`, null, { params: { activityId } })
+
+// 志愿者自助签退；params: {activityId}
+export const checkOut = (activityId) =>
+  http.post(`/attendance/check-out`, null, { params: { activityId } })

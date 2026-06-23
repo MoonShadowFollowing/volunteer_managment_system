@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import edu.scau.vms.common.PageResult;
 import edu.scau.vms.common.constant.AuditStatus;
 import edu.scau.vms.common.constant.ErrorCode;
+import edu.scau.vms.common.constant.MsgType;
 import edu.scau.vms.common.constant.PublishStatus;
 import edu.scau.vms.common.constant.RegStatus;
 import edu.scau.vms.common.exception.BizException;
@@ -12,6 +13,7 @@ import edu.scau.vms.module.activity.dto.ActivitySaveRequest;
 import edu.scau.vms.module.activity.dto.ActivityVO;
 import edu.scau.vms.module.activity.entity.Activity;
 import edu.scau.vms.module.activity.mapper.ActivityMapper;
+import edu.scau.vms.module.message.MessageService;
 import edu.scau.vms.module.registration.entity.Registration;
 import edu.scau.vms.module.registration.mapper.RegistrationMapper;
 import edu.scau.vms.module.user.UserService;
@@ -40,6 +42,7 @@ public class ActivityService {
     private final ActivityMapper activityMapper;
     private final RegistrationMapper registrationMapper;
     private final UserService userService;
+    private final MessageService messageService;
 
     public PageResult<ActivityVO> list(Long page, Long size, String name, LocalDate startDate, LocalDate endDate,
                                        String auditStatus, String publishStatus, Long organizerId, boolean volunteerView) {
@@ -117,6 +120,11 @@ public class ActivityService {
         a.setAuditStatus(approve ? AuditStatus.APPROVED : AuditStatus.REJECTED);
         if (!approve) a.setPublishStatus(PublishStatus.STOPPED);
         activityMapper.updateById(a);
+
+        messageService.sendDirect(a.getOrganizerId(), MsgType.ACTIVITY_NOTICE,
+                approve ? "活动审核通过" : "活动审核未通过",
+                "您发布的【" + a.getTitle() + "】" + (approve ? "已通过管理员审核，现在可以点击发布开关开放报名。" : "未通过管理员审核，请检查活动详情后修改重新提交。"),
+                "organizer");
     }
 
     // 发布开关：必须先审核通过才能"发布中"，停了能再开

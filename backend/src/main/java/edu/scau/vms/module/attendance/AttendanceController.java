@@ -14,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-// 签到/志愿时这块全是组织者后台改数据，志愿者本人没自助入口
 @Tag(name = "Attendance", description = "签到与志愿时")
 @RestController
 @RequestMapping("/api/attendance")
@@ -42,6 +41,22 @@ public class AttendanceController {
                                     @PathVariable Long recordId,
                                     @Valid @RequestBody HoursRequest req) {
         attendanceService.updateHours(recordId, me.userId(), me.admin(), req);
+        return Result.ok();
+    }
+
+    @Operation(summary = "志愿者签到")
+    @PostMapping("/check-in")
+    public Result<Void> checkIn(@AuthenticationPrincipal UserPrincipal me,
+                                @RequestParam Long activityId) {
+        attendanceService.checkIn(activityId, me.userId());
+        return Result.ok();
+    }
+
+    @Operation(summary = "志愿者签退")
+    @PostMapping("/check-out")
+    public Result<Void> checkOut(@AuthenticationPrincipal UserPrincipal me,
+                                  @RequestParam Long activityId) {
+        attendanceService.checkOut(activityId, me.userId());
         return Result.ok();
     }
 
