@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS users (
     phone         CHAR(11)     NULL                    COMMENT '中国大陆手机号',
     is_organizer  TINYINT(1)   NOT NULL DEFAULT 0      COMMENT '是否具备组织者资质',
     is_admin      TINYINT(1)   NOT NULL DEFAULT 0      COMMENT '是否被超管赋权管理员',
+    source        VARCHAR(10)  NULL     DEFAULT 'LOCAL' COMMENT '账号来源 LOCAL/EDU',
+    synced_at     DATETIME     NULL                    COMMENT '最近同步时间',
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
     PRIMARY KEY (user_id),
     UNIQUE KEY uk_users_username (username),
@@ -144,23 +146,24 @@ CREATE TABLE IF NOT EXISTS organizer_applications (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='组织者资质申请表';
 
 -- =====================================================================
--- 增量 DDL（已有数据库直接执行以下语句即可，幂等）
+-- 增量 DDL（MySQL 8.0 不支持 ADD COLUMN IF NOT EXISTS / CREATE INDEX，
+-- 首次建表时上面已包含所有字段，下面仅对已有旧库补充——错误由 continue-on-error 兜底）
 -- =====================================================================
 
--- 补充 users 表字段：账号来源 + 同步时间（MySQL 8.0.29+ 支持 IF NOT EXISTS）
-ALTER TABLE users ADD COLUMN IF NOT EXISTS source VARCHAR(10) NULL DEFAULT 'LOCAL' COMMENT '账号来源 LOCAL/EDU' AFTER is_admin;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS synced_at DATETIME NULL COMMENT '最近同步时间' AFTER source;
+-- 补充 users 表字段（旧库无 source/synced_at 时生效，否则失败被忽略）
+ALTER TABLE users ADD COLUMN source VARCHAR(10) NULL DEFAULT 'LOCAL' COMMENT '账号来源 LOCAL/EDU' AFTER is_admin;
+ALTER TABLE users ADD COLUMN synced_at DATETIME NULL COMMENT '最近同步时间' AFTER source;
 
--- 补充索引（常用查询字段加速）
-CREATE INDEX IF NOT EXISTS idx_act_org_status ON activities (organizer_id, audit_status);
-CREATE INDEX IF NOT EXISTS idx_reg_vol_status ON registrations (volunteer_id, audit_status);
-CREATE INDEX IF NOT EXISTS idx_att_activity ON attendance (activity_id);
-CREATE INDEX IF NOT EXISTS idx_att_volunteer ON attendance (volunteer_id);
-CREATE INDEX IF NOT EXISTS idx_att_checkout ON attendance (check_out_time);
-CREATE INDEX IF NOT EXISTS idx_users_org ON users (is_organizer);
-CREATE INDEX IF NOT EXISTS idx_users_admin ON users (is_admin);
-CREATE INDEX IF NOT EXISTS idx_cert_volunteer ON certificates (volunteer_id);
-CREATE INDEX IF NOT EXISTS idx_msg_receiver_id ON messages (receiver_id);
+-- 补充索引（已存在时报错被 continue-on-error 忽略）
+CREATE INDEX idx_act_org_status ON activities (organizer_id, audit_status);
+CREATE INDEX idx_reg_vol_status ON registrations (volunteer_id, audit_status);
+CREATE INDEX idx_att_activity ON attendance (activity_id);
+CREATE INDEX idx_att_volunteer ON attendance (volunteer_id);
+CREATE INDEX idx_att_checkout ON attendance (check_out_time);
+CREATE INDEX idx_users_org ON users (is_organizer);
+CREATE INDEX idx_users_admin ON users (is_admin);
+CREATE INDEX idx_cert_volunteer ON certificates (volunteer_id);
+CREATE INDEX idx_msg_receiver_id ON messages (receiver_id);
 
 -- 视图 1：志愿者工时汇总
 CREATE OR REPLACE VIEW v_volunteer_hours_summary AS

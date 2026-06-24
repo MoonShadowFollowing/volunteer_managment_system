@@ -17,7 +17,7 @@ spring:
       mode: always
       schema-locations: classpath:sql/schema.sql
       data-locations: classpath:sql/data.sql
-      continue-on-error: false
+      continue-on-error: true
       encoding: UTF-8
 
   servlet:

@@ -40,8 +40,10 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 @Order(100)
-@ConditionalOnProperty(prefix = "vms.seed", name = "bulk", havingValue = "true")
 public class BulkDataSeeder implements ApplicationRunner {
+
+    @Value("${vms.seed.bulk:true}")
+    private boolean bulkEnabled;
 
     private static final String BCRYPT_123456 =
             "$2a$10$H7Mbq2486I0yeclMuoEhqubHwydIVT666w8.oXacS8TOjsh7V3cva";
@@ -78,6 +80,10 @@ public class BulkDataSeeder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        if (!bulkEnabled) {
+            log.info("[BulkDataSeeder] vms.seed.bulk=false，跳过批量种子。");
+            return;
+        }
         Integer existing = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM activities WHERE title LIKE ?",
                 Integer.class, ACT_TITLE_PREFIX + "%");
