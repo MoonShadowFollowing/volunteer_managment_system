@@ -47,10 +47,12 @@ public class ReportService {
     // 默认导自己，admin 可以导别人
     public byte[] personalHoursXlsx(Long targetUserId, Long currentUserId, boolean isAdmin) {
         if (!isAdmin && !targetUserId.equals(currentUserId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权导出他人工时");
+            throw new BizException(ErrorCode.FORBIDDEN, "无权导出他人工时",
+                    "您只能导出自己的工时报表。如需导出他人数据，请联系系统管理员。");
         }
         User u = userMapper.selectById(targetUserId);
-        if (u == null) throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+        if (u == null) throw new BizException(ErrorCode.NOT_FOUND, "用户不存在",
+                "请检查用户编号是否正确。");
 
         // 按签退时间排，xlsx 里就是时间顺序
         List<Attendance> records = attendanceMapper.selectList(
@@ -122,7 +124,8 @@ public class ReportService {
             return baos.toByteArray();
         } catch (IOException e) {
             log.error("[ReportService] 个人工时 xlsx 生成失败 userId={}", targetUserId, e);
-            throw new BizException(ErrorCode.SERVER_ERROR, "Excel 生成失败");
+            throw new BizException(ErrorCode.SERVER_ERROR, "Excel 生成失败",
+                    "系统处理数据时出现异常，请稍后重试。如持续失败，请联系系统管理员。");
         }
     }
 
@@ -130,9 +133,11 @@ public class ReportService {
     // 只有这个活动的组织者本人能导，admin 当然也能
     public byte[] activitySummaryXlsx(Long activityId, Long currentUserId, boolean isAdmin) {
         Activity a = activityMapper.selectById(activityId);
-        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在",
+                "该活动可能已被删除。请刷新活动列表获取最新数据。");
         if (!isAdmin && !a.getOrganizerId().equals(currentUserId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权导出他人活动签到");
+            throw new BizException(ErrorCode.FORBIDDEN, "无权导出他人活动签到",
+                    "您只能导出自己发布活动的签到汇总。如需导出其他活动数据，请联系系统管理员。");
         }
 
         List<Attendance> records = attendanceMapper.selectList(
@@ -185,7 +190,8 @@ public class ReportService {
             return baos.toByteArray();
         } catch (IOException e) {
             log.error("[ReportService] 活动签到 xlsx 生成失败 activityId={}", activityId, e);
-            throw new BizException(ErrorCode.SERVER_ERROR, "Excel 生成失败");
+            throw new BizException(ErrorCode.SERVER_ERROR, "Excel 生成失败",
+                    "系统处理数据时出现异常，请稍后重试。如持续失败，请联系系统管理员。");
         }
     }
 
@@ -246,14 +252,16 @@ public class ReportService {
             return baos.toByteArray();
         } catch (IOException e) {
             log.error("[ReportService] 月度 xlsx 生成失败 {}-{}", year, month, e);
-            throw new BizException(ErrorCode.SERVER_ERROR, "Excel 生成失败");
+            throw new BizException(ErrorCode.SERVER_ERROR, "Excel 生成失败",
+                    "系统处理数据时出现异常，请稍后重试。如持续失败，请联系系统管理员。");
         }
     }
 
     // 月度聚合：每个志愿者的活动数 + 总分钟，按总分钟降序
     public List<Row3> aggregateMonthly(int year, int month) {
         if (month < 1 || month > 12) {
-            throw new BizException(ErrorCode.PARAM_INVALID, "月份必须在 1~12 之间");
+            throw new BizException(ErrorCode.PARAM_INVALID, "月份必须在 1~12 之间",
+                    "请输入正确的月份（1-12）后重新导出。");
         }
         YearMonth ym = YearMonth.of(year, month);
         LocalDateTime start = ym.atDay(1).atStartOfDay();

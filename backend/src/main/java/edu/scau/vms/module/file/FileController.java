@@ -66,16 +66,19 @@ public class FileController {
     @PostMapping("/upload")
     public Result<Map<String, Object>> upload(@RequestParam("file") MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new BizException(ErrorCode.PARAM_INVALID, "文件为空");
+            throw new BizException(ErrorCode.PARAM_INVALID, "文件为空",
+                    "请选择一个文件后再上传。支持的格式：jpg、png、gif、webp、pdf。");
         }
         if (file.getSize() > maxMb * 1024 * 1024) {
-            throw new BizException(ErrorCode.PARAM_INVALID, "文件超过 " + maxMb + "MB 限制");
+            throw new BizException(ErrorCode.PARAM_INVALID, "文件超过 " + maxMb + "MB 限制",
+                    "请压缩文件或选择更小的文件上传。当前限制为 " + maxMb + "MB。");
         }
         String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
         String ext = extensionOf(original).toLowerCase(Locale.ROOT);
         if (!ALLOWED_EXT.contains(ext)) {
             throw new BizException(ErrorCode.PARAM_INVALID,
-                    "仅支持 " + String.join("/", ALLOWED_EXT) + " 格式");
+                    "仅支持 " + String.join("/", ALLOWED_EXT) + " 格式",
+                    "请将文件转换为支持的格式后重新上传：jpg、png、gif、webp、pdf。");
         }
 
         String subDir = LocalDate.now().format(DIR_FMT);
@@ -89,13 +92,15 @@ public class FileController {
             Path dest = dir.resolve(name).normalize();
             // normalize 之后还要再确认一遍是不是真在 root 下，挡 ../ 攻击
             if (!dest.startsWith(root)) {
-                throw new BizException(ErrorCode.PARAM_INVALID, "非法文件路径");
+                throw new BizException(ErrorCode.PARAM_INVALID, "非法文件路径",
+                        "文件路径异常，请重新选择文件后上传。");
             }
             file.transferTo(dest);
             log.info("[FileUpload] saved {} → {} ({} bytes)", original, dest, file.getSize());
         } catch (IOException e) {
             log.error("[FileUpload] 保存失败 {}", original, e);
-            throw new BizException(ErrorCode.SERVER_ERROR, "文件保存失败");
+            throw new BizException(ErrorCode.SERVER_ERROR, "文件保存失败",
+                    "服务器存储异常，请稍后重试。如持续失败，请联系系统管理员。");
         }
 
         String url = "/api/files/static/" + relative;
@@ -144,7 +149,8 @@ public class FileController {
         try {
             Files.createDirectories(root);
         } catch (IOException e) {
-            throw new BizException(ErrorCode.SERVER_ERROR, "上传目录不可用：" + root);
+            throw new BizException(ErrorCode.SERVER_ERROR, "上传目录不可用：" + root,
+                    "服务器存储配置异常，请联系系统管理员检查上传目录权限。");
         }
         return root;
     }

@@ -142,3 +142,56 @@ CREATE TABLE IF NOT EXISTS organizer_applications (
     CONSTRAINT fk_app_applicant FOREIGN KEY (applicant_id) REFERENCES users (user_id),
     CONSTRAINT fk_app_auditor FOREIGN KEY (auditor_id) REFERENCES users (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='组织者资质申请表';
+
+-- =====================================================================
+-- 增量 DDL（已有数据库直接执行以下语句即可，幂等）
+-- =====================================================================
+
+-- 补充 users 表字段：账号来源 + 同步时间（MySQL 8.0.29+ 支持 IF NOT EXISTS）
+ALTER TABLE users ADD COLUMN IF NOT EXISTS source VARCHAR(10) NULL DEFAULT 'LOCAL' COMMENT '账号来源 LOCAL/EDU' AFTER is_admin;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS synced_at DATETIME NULL COMMENT '最近同步时间' AFTER source;
+
+-- 补充索引（常用查询字段加速）
+CREATE INDEX IF NOT EXISTS idx_act_org_status ON activities (organizer_id, audit_status);
+CREATE INDEX IF NOT EXISTS idx_reg_vol_status ON registrations (volunteer_id, audit_status);
+CREATE INDEX IF NOT EXISTS idx_att_activity ON attendance (activity_id);
+CREATE INDEX IF NOT EXISTS idx_att_volunteer ON attendance (volunteer_id);
+CREATE INDEX IF NOT EXISTS idx_att_checkout ON attendance (check_out_time);
+CREATE INDEX IF NOT EXISTS idx_users_org ON users (is_organizer);
+CREATE INDEX IF NOT EXISTS idx_users_admin ON users (is_admin);
+CREATE INDEX IF NOT EXISTS idx_cert_volunteer ON certificates (volunteer_id);
+CREATE INDEX IF NOT EXISTS idx_msg_receiver_id ON messages (receiver_id);
+
+-- 视图 1：志愿者工时汇总
+CREATE OR REPLACE VIEW v_volunteer_hours_summary AS
+SELECT u.user_id, u.username, u.name, u.role,
+       COUNT(a.record_id) AS activity_count,
+       COALESCE(SUM(a.service_hours),0) + COALESCE(SUM(a.service_minutes),0) DIV 60 AS total_hours,
+       COALESCE(SUM(a.service_minutes),0) % 60 AS total_minutes
+FROM users u
+LEFT JOIN attendance a ON u.user_id = a.volunteer_id AND a.status = '已签退'
+GROUP BY u.user_id, u.username, u.name, u.role;
+
+-- 视图 2：活动报名概览
+CREATE OR REPLACE VIEW v_activity_enrollment AS
+SELECT a.activity_id, a.title, a.location, a.start_time, a.end_time,
+       a.capacity, a.audit_status, a.publish_status, a.organizer_id,
+       uo.name AS organizer_name,
+       COUNT(r.reg_id) AS total_registrations,
+       SUM(CASE WHEN r.audit_status='审核通过' THEN 1 ELSE 0 END) AS approved_count,
+       SUM(CASE WHEN r.audit_status='待审核'   THEN 1 ELSE 0 END) AS pending_count
+FROM activities a
+LEFT JOIN users uo ON a.organizer_id = uo.user_id
+LEFT JOIN registrations r ON a.activity_id = r.activity_id
+GROUP BY a.activity_id, a.title, a.location, a.start_time, a.end_time,
+         a.capacity, a.audit_status, a.publish_status, a.organizer_id, uo.name;
+
+-- 视图 3：证书详情
+CREATE OR REPLACE VIEW v_certificate_detail AS
+SELECT c.cert_id, c.title AS cert_title, c.activity_id, a.title AS activity_name,
+       a.start_time, a.end_time, c.volunteer_id,
+       u.name AS volunteer_name, u.username AS volunteer_username,
+       c.cert_hours, c.cert_minutes, c.issued_date, c.status
+FROM certificates c
+JOIN activities a ON c.activity_id = a.activity_id
+JOIN users u ON c.volunteer_id = u.user_id;

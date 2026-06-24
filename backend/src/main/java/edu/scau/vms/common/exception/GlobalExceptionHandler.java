@@ -19,11 +19,11 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // 业务异常照原样回前端，HTTP 还是 200
+    // 业务异常照原样回前端，HTTP 还是 200；fix 字段携带修正指引
     @ExceptionHandler(BizException.class)
     public Result<Void> handleBiz(BizException e) {
-        log.warn("BizException code={} msg={}", e.getCode(), e.getMessage());
-        return Result.fail(e.getCode(), e.getMessage());
+        log.warn("BizException code={} msg={} fix={}", e.getCode(), e.getMessage(), e.getFix());
+        return Result.fail(e.getCode(), e.getMessage(), e.getFix());
     }
 
     // @Valid 校验失败，把每个字段的错拼一块儿返回，方便前端定位

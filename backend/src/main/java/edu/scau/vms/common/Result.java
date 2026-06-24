@@ -3,8 +3,6 @@ package edu.scau.vms.common;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
-// 全项目接口的统一返回壳子。axios 拦截器会自动拆 data 出来
-// code=0 成功，非 0 业务失败（HTTP 状态码还是 200）；认证类失败走 401/403
 @Data
 @Schema(description = "统一响应包装")
 public class Result<T> {
@@ -14,6 +12,9 @@ public class Result<T> {
 
     @Schema(description = "提示信息")
     private String msg;
+
+    @Schema(description = "修正指引：告诉用户下一步该怎么做")
+    private String fix;
 
     @Schema(description = "业务数据")
     private T data;
@@ -34,6 +35,14 @@ public class Result<T> {
         Result<T> r = new Result<>();
         r.code = code;
         r.msg = msg;
+        return r;
+    }
+
+    public static <T> Result<T> fail(int code, String msg, String fix) {
+        Result<T> r = new Result<>();
+        r.code = code;
+        r.msg = msg;
+        r.fix = fix;
         return r;
     }
 }

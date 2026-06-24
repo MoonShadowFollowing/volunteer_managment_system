@@ -41,6 +41,16 @@ public class UserService {
         return userMapper.selectById(userId);
     }
 
+    // 教务实时验证通过后更新本地密码，只改 password 字段
+    @Transactional
+    public void updatePassword(Long userId, String encodedPassword) {
+        User u = userMapper.selectById(userId);
+        if (u != null) {
+            u.setPassword(encodedPassword);
+            userMapper.updateById(u);
+        }
+    }
+
     public PageResult<UserSummaryVO> promotable(Long page, Long size, String name, String userNo) {
         LambdaQueryWrapper<User> qw = new LambdaQueryWrapper<>();
         qw.eq(User::getIsAdmin, false)
@@ -90,16 +100,19 @@ public class UserService {
     @Transactional
     public void promoteAdmin(Long userId, Long operatorId) {
         User u = userMapper.selectById(userId);
-        if (u == null) throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+        if (u == null) throw new BizException(ErrorCode.NOT_FOUND, "用户不存在",
+                "请检查用户编号是否正确，或刷新可提升用户列表。");
         if (Role.SUPERADMIN.equals(u.getRole())) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "不能修改超级管理员");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "不能修改超级管理员",
+                    "超级管理员是系统最高权限账号，不允许变更。如需管理管理员，请操作其他用户。");
         }
         if (Boolean.TRUE.equals(u.getIsAdmin())) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "该用户已经是管理员");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "该用户已经是管理员",
+                    "该用户已具备管理员权限，无需重复提升。如需重置权限，请先撤销后再操作。");
         }
-        // 校验：仅允许 username 长度为 8 位的用户被提升为管理员
         if (u.getUsername() == null || u.getUsername().length() != 8) {
-            throw new BizException(ErrorCode.PARAM_INVALID, "仅允许用户名为 8 位（学号/工号格式）的用户成为管理员");
+            throw new BizException(ErrorCode.PARAM_INVALID, "仅允许用户名为 8 位（学号/工号格式）的用户成为管理员",
+                    "管理员须使用 8 位学号/工号。请确认该用户账号格式符合要求后再操作。");
         }
         u.setIsAdmin(true);
         u.setRole(Role.ADMIN);
@@ -115,12 +128,15 @@ public class UserService {
     @Transactional
     public void revokeAdmin(Long userId, Long operatorId) {
         User u = userMapper.selectById(userId);
-        if (u == null) throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+        if (u == null) throw new BizException(ErrorCode.NOT_FOUND, "用户不存在",
+                "请检查用户编号是否正确，或刷新管理员列表。");
         if (Role.SUPERADMIN.equals(u.getRole())) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "不能修改超级管理员");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "不能修改超级管理员",
+                    "超级管理员是系统最高权限账号，不允许变更。");
         }
         if (!Boolean.TRUE.equals(u.getIsAdmin())) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "该用户不是管理员");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "该用户不是管理员",
+                    "该用户当前不具备管理员权限，无需撤销。请刷新列表确认最新状态。");
         }
         u.setIsAdmin(false);
         // 同时把角色降回 volunteer（除非他还是 organizer，反正 role 字段在 V1.1 中已淡化）
@@ -137,14 +153,16 @@ public class UserService {
     @Transactional
     public void revokeOrganizer(Long userId) {
         User u = userMapper.selectById(userId);
-        if (u == null) throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+        if (u == null) throw new BizException(ErrorCode.NOT_FOUND, "用户不存在",
+                "请检查用户编号是否正确，或刷新组织者列表。");
         if (!Boolean.TRUE.equals(u.getIsOrganizer())) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "该用户没有组织者资质");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "该用户没有组织者资质",
+                    "该用户当前不具备组织者资质，无需撤销。用户可在志愿者端自行申请组织者资格。");
         }
-        // 方案三：管理员身份不可被撤销组织者资质
         if (Boolean.TRUE.equals(u.getIsAdmin())) {
             throw new BizException(ErrorCode.ADMIN_CANNOT_REVOKE_ORGANIZER,
-                    "该用户是系统管理员，无法撤销其组织者身份！");
+                    "该用户是系统管理员，无法撤销其组织者身份",
+                    "管理员拥有组织者所有权限。如需移除其组织者身份，请先在「管理员管理」中撤销其管理员权限。");
         }
         u.setIsOrganizer(false);
         userMapper.updateById(u);

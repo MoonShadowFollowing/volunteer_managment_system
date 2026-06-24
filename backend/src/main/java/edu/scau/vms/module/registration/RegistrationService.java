@@ -48,12 +48,15 @@ public class RegistrationService {
     @Transactional
     public Long apply(Long volunteerId, Long activityId) {
         Activity a = activityMapper.selectById(activityId);
-        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在",
+                "请刷新活动列表获取最新数据，该活动可能已被删除或下架。");
         if (!AuditStatus.APPROVED.equals(a.getAuditStatus()) || !PublishStatus.PUBLISHED.equals(a.getPublishStatus())) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "该活动当前不开放报名");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "该活动当前不开放报名",
+                    "该活动可能未通过审核或已被组织者停止发布。您可以浏览其他正在招募志愿者的活动。");
         }
         if (a.getOrganizerId().equals(volunteerId)) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "不能报名自己发布的活动");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "不能报名自己发布的活动",
+                    "您是该活动的组织者，无需报名。请切换到组织者面板查看和管理报名情况。");
         }
         LambdaQueryWrapper<Registration> qw = new LambdaQueryWrapper<>();
         qw.eq(Registration::getActivityId, activityId).eq(Registration::getVolunteerId, volunteerId);
@@ -61,11 +64,13 @@ public class RegistrationService {
         // 只有"已取消"和"审核拒绝"才允许重新报；待审核/已通过都算占着位
         if (exist != null && !RegStatus.CANCELLED.equals(exist.getAuditStatus())
                 && !RegStatus.REJECTED.equals(exist.getAuditStatus())) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "您已报名该活动");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "您已报名该活动",
+                    "您可以在「我的报名」中查看报名状态和审核进度。报名被拒或取消后可重新报名。");
         }
         long approved = countApproved(activityId);
         if (approved >= a.getCapacity()) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "活动报名人数已满");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "活动报名人数已满",
+                    "该活动名额已满。您可以关注其他类似活动，或联系活动组织者确认是否可能增加名额。");
         }
         if (exist != null) {
             // 之前取消/被拒过，复用同一行 reg_id 改回待审核
@@ -88,12 +93,15 @@ public class RegistrationService {
     @Transactional
     public void cancel(Long regId, Long currentUserId) {
         Registration r = registrationMapper.selectById(regId);
-        if (r == null) throw new BizException(ErrorCode.NOT_FOUND, "报名记录不存在");
+        if (r == null) throw new BizException(ErrorCode.NOT_FOUND, "报名记录不存在",
+                "请刷新报名列表获取最新数据，该记录可能已被删除。");
         if (!r.getVolunteerId().equals(currentUserId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权操作他人报名");
+            throw new BizException(ErrorCode.FORBIDDEN, "无权操作他人报名",
+                    "您只能取消自己的报名记录。");
         }
         if (!RegStatus.PENDING.equals(r.getAuditStatus())) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "仅待审核报名可取消");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "仅待审核报名可取消",
+                    "报名已审核通过或已拒绝，无法取消。如已通过审核需要退出，请联系活动组织者。");
         }
         r.setAuditStatus(RegStatus.CANCELLED);
         registrationMapper.updateById(r);
@@ -102,20 +110,25 @@ public class RegistrationService {
     @Transactional
     public void audit(Long regId, Long currentUserId, boolean isAdmin, boolean approve) {
         Registration r = registrationMapper.selectById(regId);
-        if (r == null) throw new BizException(ErrorCode.NOT_FOUND, "报名记录不存在");
+        if (r == null) throw new BizException(ErrorCode.NOT_FOUND, "报名记录不存在",
+                "请刷新报名列表获取最新数据，该记录可能已被志愿者取消。");
         Activity a = activityMapper.selectById(r.getActivityId());
-        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在",
+                "该活动可能已被删除，请联系系统管理员确认。");
         if (!isAdmin && !a.getOrganizerId().equals(currentUserId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权审核他人活动报名");
+            throw new BizException(ErrorCode.FORBIDDEN, "无权审核他人活动报名",
+                    "您只能审核自己发布活动的报名。请切换到对应活动的管理页面操作。");
         }
         if (!RegStatus.PENDING.equals(r.getAuditStatus())) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "仅待审核报名可处理");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "仅待审核报名可处理",
+                    "该报名已审核过，请刷新列表获取最新状态。如需修改审核结果，请联系系统管理员。");
         }
         if (approve) {
             // 真审到通过那一刻再查一次容量，避免并发场景下越审越多
             long approved = countApproved(r.getActivityId());
             if (approved >= a.getCapacity()) {
-                throw new BizException(ErrorCode.BIZ_CONFLICT, "活动报名人数已满");
+                throw new BizException(ErrorCode.BIZ_CONFLICT, "活动报名人数已满",
+                        "审核时名额已被其他人占满。您可以拒绝此报名，或联系管理员扩大活动名额后再操作。");
             }
             r.setAuditStatus(RegStatus.APPROVED);
             // 顺便占住 attendance 那行，后续签到/补签直接 update 就行

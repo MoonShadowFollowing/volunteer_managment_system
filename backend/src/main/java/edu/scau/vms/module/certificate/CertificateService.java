@@ -47,10 +47,12 @@ public class CertificateService {
     public CertificateVO getOwnedById(Long certId, Long volunteerId) {
         Certificate c = certificateMapper.selectById(certId);
         if (c == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "证书不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "证书不存在",
+                    "该证书可能尚未生成或已被删除。证书在您获得志愿时长后自动生成，请确认已有工时记录。");
         }
         if (!c.getVolunteerId().equals(volunteerId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权访问该证书");
+            throw new BizException(ErrorCode.FORBIDDEN, "无权访问该证书",
+                    "您只能查看和下载自己的志愿服务证书。");
         }
         List<CertificateVO> vos = toVOs(List.of(c));
         return vos.get(0);

@@ -37,16 +37,18 @@ public class OrganizerApplicationService {
     @Transactional
     public Long submit(Long applicantId, SubmitApplicationRequest req) {
         User u = userMapper.selectById(applicantId);
-        if (u == null) throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+        if (u == null) throw new BizException(ErrorCode.NOT_FOUND, "用户不存在",
+                "请重新登录后再试。");
         if (Boolean.TRUE.equals(u.getIsOrganizer())) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "您已具备组织者资质，无需重复申请");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "您已具备组织者资质，无需重复申请",
+                    "您已是组织者，可在页面右上角菜单切换为「组织者」身份发布和管理活动。");
         }
-        // 已有待审核申请就不重复提交
         Long pending = appMapper.selectCount(new LambdaQueryWrapper<OrganizerApplication>()
                 .eq(OrganizerApplication::getApplicantId, applicantId)
                 .eq(OrganizerApplication::getAuditStatus, AppStatus.PENDING));
         if (pending > 0) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "您已有一份待审核申请，请耐心等待");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "您已有一份待审核申请，请耐心等待",
+                    "您的申请正在审核中，可在「我的申请」中查看进度。审核完成后会通过消息通知您。");
         }
         OrganizerApplication app = new OrganizerApplication();
         app.setApplicantId(applicantId);
@@ -93,9 +95,11 @@ public class OrganizerApplicationService {
     @Transactional
     public void audit(Long appId, Long auditorId, boolean approve) {
         OrganizerApplication app = appMapper.selectById(appId);
-        if (app == null) throw new BizException(ErrorCode.NOT_FOUND, "申请不存在");
+        if (app == null) throw new BizException(ErrorCode.NOT_FOUND, "申请不存在",
+                "该申请可能已被撤回或删除，请刷新申请列表获取最新数据。");
         if (!AppStatus.PENDING.equals(app.getAuditStatus())) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "申请已审核，不可再次操作");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "申请已审核，不可再次操作",
+                    "该申请已处理完毕，请刷新列表查看最新状态。申请人可重新提交新的申请。");
         }
         app.setAuditStatus(approve ? AppStatus.APPROVED : AppStatus.REJECTED);
         app.setAuditorId(auditorId);

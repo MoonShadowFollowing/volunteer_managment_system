@@ -56,7 +56,8 @@ public class CertificateController {
             @PathVariable Long id) {
         CertificateVO vo = certificateService.getOwnedById(id, me.userId());
         if (CertStatus.INVALID.equals(vo.getStatus())) {
-            throw new BizException(ErrorCode.CERT_INVALID, "该证书已失效，无法下载");
+            throw new BizException(ErrorCode.CERT_INVALID, "该证书已失效，无法下载",
+                    "因该活动的志愿工时被清零，证书已自动失效。如需恢复，请联系活动组织者重新设置志愿时长。");
         }
         User user = userMapper.selectById(me.userId());
         String volunteerName = user == null ? "" : user.getName();

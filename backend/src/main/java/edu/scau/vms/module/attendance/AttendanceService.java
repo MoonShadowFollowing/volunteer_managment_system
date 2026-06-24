@@ -51,9 +51,11 @@ public class AttendanceService {
 
     public PageResult<AttendanceVO> byActivity(Long activityId, Long page, Long size, Long currentUserId, boolean isAdmin) {
         Activity a = activityMapper.selectById(activityId);
-        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在",
+                "请刷新活动列表，该活动可能已被删除。");
         if (!isAdmin && !a.getOrganizerId().equals(currentUserId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权查看他人活动签到");
+            throw new BizException(ErrorCode.FORBIDDEN, "无权查看他人活动签到",
+                    "您只能查看自己发布活动的签到记录。");
         }
         LambdaQueryWrapper<Attendance> qw = new LambdaQueryWrapper<>();
         qw.eq(Attendance::getActivityId, activityId).orderByAsc(Attendance::getRecordId);
@@ -65,26 +67,30 @@ public class AttendanceService {
     @Transactional
     public void updateHours(Long recordId, Long currentUserId, boolean isAdmin, HoursRequest req) {
         Attendance att = attendanceMapper.selectById(recordId);
-        if (att == null) throw new BizException(ErrorCode.NOT_FOUND, "签到记录不存在");
+        if (att == null) throw new BizException(ErrorCode.NOT_FOUND, "签到记录不存在",
+                "请刷新签到列表获取最新数据。");
         Activity a = activityMapper.selectById(att.getActivityId());
-        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在",
+                "该活动可能已被删除，请联系系统管理员。");
         if (!isAdmin && !a.getOrganizerId().equals(currentUserId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权修改他人活动志愿时");
+            throw new BizException(ErrorCode.FORBIDDEN, "无权修改他人活动志愿时",
+                    "您只能修改自己发布活动的志愿时长。");
         }
-        // 校验工时不能为负数
         if (req.getHours() < 0 || req.getMinutes() < 0) {
-            throw new BizException(ErrorCode.PARAM_INVALID, "工时不能为负数");
+            throw new BizException(ErrorCode.PARAM_INVALID, "工时不能为负数",
+                    "请输入 0 或正数的小时和分钟数。");
         }
         if (req.getMinutes() > 59) {
-            throw new BizException(ErrorCode.PARAM_INVALID, "分钟数不能超过 59");
+            throw new BizException(ErrorCode.PARAM_INVALID, "分钟数不能超过 59",
+                    "请将分钟数设置在 0-59 之间，超出 60 的部分请进位到小时。");
         }
-        // 校验工时不能超过活动总时长
         long totalMinutes = req.getHours() * 60L + req.getMinutes();
         long activityMinutes = java.time.Duration.between(a.getStartTime(), a.getEndTime()).toMinutes();
         if (totalMinutes > activityMinutes) {
             throw new BizException(ErrorCode.PARAM_INVALID,
                     String.format("志愿时不能超过活动总时长（%d小时%d分钟）",
-                            activityMinutes / 60, activityMinutes % 60));
+                            activityMinutes / 60, activityMinutes % 60),
+                    "请将志愿时调整为不超过活动总时长后重新提交。");
         }
         att.setServiceHours(req.getHours());
         att.setServiceMinutes(req.getMinutes());
@@ -106,17 +112,22 @@ public class AttendanceService {
     @Transactional
     public void manualSign(Long recordId, Long currentUserId, boolean isAdmin, ManualSignRequest req) {
         if (req.getMinutes() < 0 || req.getMinutes() > 59 || req.getHours() < 0) {
-            throw new BizException(ErrorCode.PARAM_INVALID, "工时格式不合法");
+            throw new BizException(ErrorCode.PARAM_INVALID, "工时格式不合法",
+                    "请输入正确格式：小时 ≥ 0，分钟 0-59。");
         }
         if (!req.getCheckOutTime().isAfter(req.getCheckInTime())) {
-            throw new BizException(ErrorCode.PARAM_INVALID, "签退时间须晚于签到时间");
+            throw new BizException(ErrorCode.PARAM_INVALID, "签退时间须晚于签到时间",
+                    "请将签退时间设置为晚于签到时间，确保时间顺序正确。");
         }
         Attendance att = attendanceMapper.selectById(recordId);
-        if (att == null) throw new BizException(ErrorCode.NOT_FOUND, "签到记录不存在");
+        if (att == null) throw new BizException(ErrorCode.NOT_FOUND, "签到记录不存在",
+                "请刷新签到列表获取最新数据。");
         Activity a = activityMapper.selectById(att.getActivityId());
-        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在",
+                "该活动可能已被删除，请联系系统管理员。");
         if (!isAdmin && !a.getOrganizerId().equals(currentUserId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权操作他人活动签到");
+            throw new BizException(ErrorCode.FORBIDDEN, "无权操作他人活动签到",
+                    "您只能操作自己发布活动的签到记录。");
         }
         // 校验工时不能超过活动总时长
         long totalMinutes = req.getHours() * 60L + req.getMinutes();
@@ -124,7 +135,8 @@ public class AttendanceService {
         if (totalMinutes > activityMinutes) {
             throw new BizException(ErrorCode.PARAM_INVALID,
                     String.format("志愿时不能超过活动总时长（%d小时%d分钟）",
-                            activityMinutes / 60, activityMinutes % 60));
+                            activityMinutes / 60, activityMinutes % 60),
+                    "请将志愿时调整为不超过活动总时长后重新提交。");
         }
         att.setCheckInTime(req.getCheckInTime());
         att.setCheckOutTime(req.getCheckOutTime());
@@ -132,8 +144,6 @@ public class AttendanceService {
         att.setServiceMinutes(req.getMinutes());
         att.setStatus(AttendStatus.CHECKED_OUT);
         attendanceMapper.updateById(att);
-
-        // 补签如果有工时就顺便发/续证书
         syncCertificate(att.getActivityId(), att.getVolunteerId(), a, req.getHours(), req.getMinutes());
 
         User vol = userService.findById(att.getVolunteerId());
@@ -148,18 +158,24 @@ public class AttendanceService {
     @Transactional
     public void checkIn(Long activityId, Long volunteerId) {
         Activity a = activityMapper.selectById(activityId);
-        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在",
+                "请刷新活动列表，该活动可能已被删除。");
         if (!PublishStatus.PUBLISHED.equals(a.getPublishStatus())) {
-            throw new BizException(ErrorCode.BIZ_CONFLICT, "活动未发布或已停止，无法签到");
+            throw new BizException(ErrorCode.BIZ_CONFLICT, "活动未发布或已停止，无法签到",
+                    "请确认活动已通过审核且处于「发布中」状态。如活动已停止，请联系组织者重新发布。");
         }
 
         LambdaQueryWrapper<Attendance> qw = new LambdaQueryWrapper<>();
         qw.eq(Attendance::getActivityId, activityId).eq(Attendance::getVolunteerId, volunteerId);
         Attendance att = attendanceMapper.selectOne(qw);
-        if (att == null) throw new BizException(ErrorCode.BIZ_CONFLICT, "没有已通过的报名记录，无法签到");
+        if (att == null) throw new BizException(ErrorCode.BIZ_CONFLICT, "没有已通过的报名记录，无法签到",
+                "请先报名该活动并等待组织者审核通过后，方可签到。");
         if (!AttendStatus.NOT_CHECKED_IN.equals(att.getStatus())) {
             throw new BizException(ErrorCode.ALREADY_CHECKED_IN,
-                    AttendStatus.CHECKED_IN.equals(att.getStatus()) ? "已签到，无需重复签到" : "当前状态不允许签到");
+                    AttendStatus.CHECKED_IN.equals(att.getStatus()) ? "已签到，无需重复签到" : "当前状态不允许签到",
+                    AttendStatus.CHECKED_IN.equals(att.getStatus())
+                            ? "您已完成签到。如需签退，请在活动结束后操作签退。"
+                            : "您当前处于「已签退」或「异常」状态，无法再次签到。如需帮助，请联系活动组织者。");
         }
 
         att.setCheckInTime(LocalDateTime.now());
@@ -173,14 +189,19 @@ public class AttendanceService {
         LambdaQueryWrapper<Attendance> qw = new LambdaQueryWrapper<>();
         qw.eq(Attendance::getActivityId, activityId).eq(Attendance::getVolunteerId, volunteerId);
         Attendance att = attendanceMapper.selectOne(qw);
-        if (att == null) throw new BizException(ErrorCode.BIZ_CONFLICT, "没有签到记录");
+        if (att == null) throw new BizException(ErrorCode.BIZ_CONFLICT, "没有签到记录",
+                "请先完成签到后再操作签退。如确认已报名通过，请联系组织者核实签到状态。");
         if (!AttendStatus.CHECKED_IN.equals(att.getStatus())) {
             throw new BizException(ErrorCode.NOT_CHECKED_IN,
-                    AttendStatus.NOT_CHECKED_IN.equals(att.getStatus()) ? "请先签到" : "当前状态不允许签退");
+                    AttendStatus.NOT_CHECKED_IN.equals(att.getStatus()) ? "请先签到" : "当前状态不允许签退",
+                    AttendStatus.NOT_CHECKED_IN.equals(att.getStatus())
+                            ? "您尚未签到，请先完成签到后再进行签退。"
+                            : "您已签退或处于异常状态，无法重复签退。如需修改，请联系活动组织者。");
         }
 
         Activity a = activityMapper.selectById(att.getActivityId());
-        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在",
+                "该活动可能已被删除，请联系系统管理员。");
 
         LocalDateTime now = LocalDateTime.now();
         att.setCheckOutTime(now);

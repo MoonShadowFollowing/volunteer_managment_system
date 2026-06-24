@@ -30,6 +30,10 @@ public class User {
 
     private Boolean isAdmin;
 
+    private String source;      // 账号来源 LOCAL/EDU
+
+    private LocalDateTime syncedAt;  // 最近同步时间
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 }

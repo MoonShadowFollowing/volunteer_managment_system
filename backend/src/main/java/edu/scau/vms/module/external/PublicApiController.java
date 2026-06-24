@@ -38,7 +38,8 @@ public class PublicApiController {
             @RequestParam("studentId") String studentId) {
 
         if (studentId == null || studentId.trim().isEmpty()) {
-            throw new BizException(ErrorCode.PARAM_INVALID, "studentId 不能为空");
+            throw new BizException(ErrorCode.PARAM_INVALID, "studentId 不能为空",
+                    "请在请求参数中提供有效的学号，例如：?studentId=202400010101。");
         }
         String sid = studentId.trim();
 
@@ -47,7 +48,8 @@ public class PublicApiController {
             userRow = jdbc.queryForMap(
                     "SELECT user_id, name FROM users WHERE username = ?", sid);
         } catch (org.springframework.dao.EmptyResultDataAccessException e) {
-            throw new BizException(ErrorCode.NOT_FOUND, "未找到学号对应的志愿者：" + sid);
+            throw new BizException(ErrorCode.NOT_FOUND, "未找到学号对应的志愿者：" + sid,
+                    "请确认学号是否正确。该系统仅包含已在本平台注册的志愿者数据。");
         }
         Long userId = ((Number) userRow.get("user_id")).longValue();
         String name = (String) userRow.get("name");

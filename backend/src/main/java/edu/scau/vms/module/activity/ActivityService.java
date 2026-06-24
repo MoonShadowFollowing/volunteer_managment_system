@@ -70,7 +70,8 @@ public class ActivityService {
 
     public ActivityVO detail(Long activityId) {
         Activity a = activityMapper.selectById(activityId);
-        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在",
+                "请刷新活动列表获取最新数据，该活动可能已被删除或下架。");
         return toVOs(List.of(a)).get(0);
     }
 
@@ -116,7 +117,8 @@ public class ActivityService {
     @Transactional
     public void audit(Long activityId, boolean approve) {
         Activity a = activityMapper.selectById(activityId);
-        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在",
+                "请刷新活动列表，该活动可能已被删除。");
         a.setAuditStatus(approve ? AuditStatus.APPROVED : AuditStatus.REJECTED);
         if (!approve) a.setPublishStatus(PublishStatus.STOPPED);
         activityMapper.updateById(a);
@@ -132,7 +134,8 @@ public class ActivityService {
     public void togglePublish(Long activityId, Long currentUserId, boolean isAdmin, boolean publish) {
         Activity a = mustOwn(activityId, currentUserId, isAdmin);
         if (publish && !AuditStatus.APPROVED.equals(a.getAuditStatus())) {
-            throw new BizException(ErrorCode.ACTIVITY_NOT_AUDITED, "活动尚未通过审核，无法发布");
+            throw new BizException(ErrorCode.ACTIVITY_NOT_AUDITED, "活动尚未通过审核，无法发布",
+                    "请等待管理员审核通过后再发布。您可以在活动管理页查看审核进度。");
         }
         a.setPublishStatus(publish ? PublishStatus.PUBLISHED : PublishStatus.STOPPED);
         activityMapper.updateById(a);
@@ -141,16 +144,19 @@ public class ActivityService {
     // 老朋友越权防护：组织者只能动自己的活动，admin 不限
     private Activity mustOwn(Long activityId, Long currentUserId, boolean isAdmin) {
         Activity a = activityMapper.selectById(activityId);
-        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在");
+        if (a == null) throw new BizException(ErrorCode.NOT_FOUND, "活动不存在",
+                "请刷新页面获取最新数据，该活动可能已被删除。");
         if (!isAdmin && !a.getOrganizerId().equals(currentUserId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权操作他人活动");
+            throw new BizException(ErrorCode.FORBIDDEN, "无权操作他人活动",
+                    "您只能编辑或删除自己发布的活动。如需管理他人的活动，请联系系统管理员。");
         }
         return a;
     }
 
     private void validateTime(LocalDateTime start, LocalDateTime end) {
         if (start == null || end == null || !end.isAfter(start)) {
-            throw new BizException(ErrorCode.PARAM_INVALID, "活动结束时间必须晚于开始时间");
+            throw new BizException(ErrorCode.PARAM_INVALID, "活动结束时间必须晚于开始时间",
+                    "请将结束时间设置为晚于开始时间后重新提交。");
         }
     }
 
