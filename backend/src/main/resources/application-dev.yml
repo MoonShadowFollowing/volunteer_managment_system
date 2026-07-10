@@ -15,7 +15,7 @@ spring:
 vms:
   jwt:
     # JWT 密钥，配置项缺省值是 dev 用的别拿去线上
-    secret: ${VMS_JWT_SECRET:Z2p4LXZtcy1qd3Qtc2VjcmV0LWRldi0yMDI2LWRvLW5vdC11c2UtaW4tcHJvZA==}
+    secret: ${VMS_JWT_SECRET:dm1zLWRldi1qd3Qta2V5LTIwMjYtZm9yLWxvY2FsLXRlc3Rpbmc=}
     expiration-hours: 24
     issuer: vms-backend
   seed:
